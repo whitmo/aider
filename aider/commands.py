@@ -4,6 +4,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import yaml
 from collections import OrderedDict
 from os.path import expanduser
 from pathlib import Path
@@ -22,6 +23,65 @@ from aider.repo import ANY_GIT_ERROR
 from aider.run_cmd import run_cmd
 from aider.scrape import Scraper, install_playwright
 from aider.utils import is_image_file
+
+def import_string(import_name):
+    """Import a module path and return the attribute/class designated by the last name."""
+    try:
+        module_path, class_name = import_name.rsplit('.', 1)
+    except ValueError as e:
+        raise ImportError(f"{import_name} doesn't look like a module path") from e
+
+    try:
+        module = __import__(module_path, None, None, [class_name])
+    except ImportError as e:
+        raise ImportError(f"Could not import module {module_path}") from e
+
+    try:
+        return getattr(module, class_name)
+    except AttributeError as e:
+        raise ImportError(f"Module {module_path} does not define a {class_name} attribute/class") from e
+
+
+class CustomCommand:
+    def __init__(self, name, command_type, definition, description=None):
+        self.name = name
+        self.command_type = command_type  # "shell", "plugin", "override" 
+        self.definition = definition
+        self.description = description
+
+
+class CustomCommandManager:
+    def __init__(self):
+        self.commands = {}
+        self.config_paths = [
+            Path.home() / ".config" / "aider" / "commands.yaml",  # User level
+            Path(".aider") / "commands.yaml",  # Repo level
+        ]
+        self.load_commands()
+
+    def load_commands(self):
+        for path in self.config_paths:
+            if path.exists():
+                try:
+                    with open(path) as f:
+                        config = yaml.safe_load(f)
+                        for name, cmd_def in config.items():
+                            if isinstance(cmd_def, str):
+                                # Simple shell command alias
+                                self.commands[name] = CustomCommand(
+                                    name, "shell", cmd_def, f"Run: {cmd_def}"
+                                )
+                            else:
+                                # Full command definition
+                                self.commands[name] = CustomCommand(
+                                    name,
+                                    cmd_def.get("type", "shell"),
+                                    cmd_def["definition"],
+                                    cmd_def.get("description")
+                                )
+                except Exception as e:
+                    print(f"Error loading commands from {path}: {e}")
+
 
 from .dump import dump  # noqa: F401
 
@@ -76,6 +136,9 @@ class Commands:
 
         self.help = None
         self.editor = editor
+        
+        # Initialize custom commands
+        self.custom_commands = CustomCommandManager()
 
     def cmd_model(self, args):
         "Switch to a new LLM"
@@ -225,6 +288,31 @@ class Commands:
         return commands
 
     def do_run(self, cmd_name, args):
+        # First check for custom commands
+        custom_cmd = self.custom_commands.commands.get(cmd_name)
+        if custom_cmd:
+            if custom_cmd.command_type == "shell":
+                # Handle shell command alias
+                shell_cmd = custom_cmd.definition.format(args=args)
+                return self.cmd_run(shell_cmd)
+            elif custom_cmd.command_type == "plugin":
+                # Handle Python plugin
+                try:
+                    plugin_func = import_string(custom_cmd.definition)
+                    return plugin_func(self, args)
+                except Exception as e:
+                    self.io.tool_error(f"Error running plugin command {cmd_name}: {e}")
+            elif custom_cmd.command_type == "override":
+                # Handle override of built-in command
+                try:
+                    override_func = import_string(custom_cmd.definition)
+                    original_func = getattr(self, f"cmd_{cmd_name}", None)
+                    return override_func(self, original_func, args)
+                except Exception as e:
+                    self.io.tool_error(f"Error running override command {cmd_name}: {e}")
+            return
+
+        # Fall back to built-in commands
         cmd_name = cmd_name.replace("-", "_")
         cmd_method_name = f"cmd_{cmd_name}"
         cmd_method = getattr(self, cmd_method_name, None)
