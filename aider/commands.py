@@ -42,31 +42,95 @@ def import_string(import_name):
         raise ImportError(f"Module {module_path} does not define a {class_name} attribute/class") from e
 
 
+from dataclasses import dataclass
+from typing import Optional, Callable
+from contextlib import contextmanager
+
+@contextmanager
+def error_handler(io, error_prefix):
+    try:
+        yield
+    except Exception as e:
+        io.tool_error(f"{error_prefix}: {e}")
+
+@dataclass
 class UserCommand:
-    def __init__(self, name, command_type, definition, description=None):
-        self.name = name
-        self.command_type = command_type  # "shell", "plugin", "override" 
-        self.definition = definition
-        self.description = description
+    name: str
+    command_type: str
+    definition: str
+    description: Optional[str] = None
+    _runner: Optional[Callable] = None
+
+    def __post_init__(self):
+        self._dispatch = {
+            "shell": self._run_shell,
+            "plugin": self._run_plugin,
+            "override": self._run_override,
+        }
+        self._runner = self._dispatch.get(self.command_type)
+        if not self._runner:
+            raise ValueError(f"Unknown command type: {self.command_type}")
 
     def __call__(self, commands, args=""):
-        if self.command_type == "shell":
-            shell_cmd = self.definition.format(args=args)
-            return commands.cmd_run(shell_cmd)
-        elif self.command_type == "plugin":
-            try:
-                plugin_func = import_string(self.definition)
-                return plugin_func(commands, args)
-            except Exception as e:
-                commands.io.tool_error(f"Error running plugin command {self.name}: {e}")
-        elif self.command_type == "override":
-            try:
-                override_func = import_string(self.definition)
-                original_func = getattr(commands, f"cmd_{self.name}", None)
-                return override_func(commands, original_func, args)
-            except Exception as e:
-                commands.io.tool_error(f"Error running override command {self.name}: {e}")
+        return self._runner(commands, args)
 
+    def _run_shell(self, commands, args):
+        shell_cmd = self.definition.format(args=args)
+        return commands.cmd_run(shell_cmd)
+
+    def _run_plugin(self, commands, args):
+        with error_handler(commands.io, f"Error running plugin command {self.name}"):
+            plugin_func = import_string(self.definition)
+            return plugin_func(commands, args)
+
+    def _run_override(self, commands, args):
+        with error_handler(commands.io, f"Error running override command {self.name}"):
+            override_func = import_string(self.definition)
+            original_func = getattr(commands, f"cmd_{self.name}", None)
+            return override_func(commands, original_func, args)
+
+
+class CommandLoader:
+    """Handles loading and parsing of command configurations"""
+    def __init__(self, config_paths):
+        self.config_paths = config_paths
+
+    def load_commands(self) -> dict:
+        commands = {}
+        for path in self.config_paths:
+            commands.update(self._load_from_file(path))
+        return commands
+
+    def _load_from_file(self, path) -> dict:
+        if not path.exists():
+            return {}
+        
+        try:
+            with open(path) as f:
+                config = yaml.safe_load(f) or {}
+                user_commands = config.get("commands", {})
+                return {
+                    name: self._create_command(name, cmd_def)
+                    for name, cmd_def in user_commands.items()
+                }
+        except Exception as e:
+            print(f"Error loading commands from {path}: {e}")
+            return {}
+
+    def _create_command(self, name: str, definition) -> UserCommand:
+        if isinstance(definition, str):
+            return UserCommand(
+                name=name,
+                command_type="shell",
+                definition=definition,
+                description=f"Run: {definition}"
+            )
+        return UserCommand(
+            name=name,
+            command_type=definition.get("type", "shell"),
+            definition=definition["definition"],
+            description=definition.get("description")
+        )
 
 class UserCommandRegistry:
     def __init__(self, commands=None):
@@ -74,30 +138,8 @@ class UserCommandRegistry:
 
     @classmethod
     def from_config(cls, config_paths):
-        commands = {}
-        for path in config_paths:
-            if path.exists():
-                try:
-                    with open(path) as f:
-                        config = yaml.safe_load(f) or {}
-                        user_commands = config.get("commands", {})
-                        for name, cmd_def in user_commands.items():
-                            if isinstance(cmd_def, str):
-                                # Simple shell command alias
-                                commands[name] = UserCommand(
-                                    name, "shell", cmd_def, f"Run: {cmd_def}"
-                                )
-                            else:
-                                # Full command definition
-                                commands[name] = UserCommand(
-                                    name,
-                                    cmd_def.get("type", "shell"),
-                                    cmd_def["definition"],
-                                    cmd_def.get("description")
-                                )
-                except Exception as e:
-                    print(f"Error loading commands from {path}: {e}")
-        return cls(commands)
+        loader = CommandLoader(config_paths)
+        return cls(loader.load_commands())
 
 
 from .dump import dump  # noqa: F401
