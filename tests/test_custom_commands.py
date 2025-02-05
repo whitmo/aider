@@ -8,70 +8,48 @@ from unittest.mock import Mock, patch
 from aider.commands import UserCommand, UserCommandRegistry, Commands
 
 
-def test_custom_command_creation():
-    cmd = CustomCommand("test", "shell", "echo test", "Test command")
+def test_user_command_creation():
+    cmd = UserCommand("test", "shell", "echo test", "Test command")
     assert cmd.name == "test"
     assert cmd.command_type == "shell"
     assert cmd.definition == "echo test"
     assert cmd.description == "Test command"
 
 
-def test_custom_command_manager_load_user_config():
+def test_user_command_registry_load_config():
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
         config_dir = tmp_path / ".config" / "aider"
         config_dir.mkdir(parents=True)
         
         config = {
-            "test": "echo test",
-            "complex": {
-                "type": "shell",
-                "definition": "pytest",
-                "description": "Run tests"
+            "commands": {
+                "test": "echo test",
+                "complex": {
+                    "type": "shell",
+                    "definition": "pytest",
+                    "description": "Run tests"
+                }
             }
         }
         
-        config_path = config_dir / "commands.yaml"
+        config_path = config_dir / ".aider.conf.yml"
         with open(config_path, "w") as f:
             yaml.dump(config, f)
         
-        with patch("pathlib.Path.home", return_value=tmp_path):
-            manager = CustomCommandManager()
+        registry = UserCommandRegistry.from_config([config_path])
             
-            assert "test" in manager.commands
-            assert manager.commands["test"].command_type == "shell"
-            assert manager.commands["test"].definition == "echo test"
-            
-            assert "complex" in manager.commands
-            assert manager.commands["complex"].command_type == "shell"
-            assert manager.commands["complex"].definition == "pytest"
-            assert manager.commands["complex"].description == "Run tests"
-
-
-def test_custom_command_manager_load_repo_config():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_path = Path(tmpdir)
-        repo_config_dir = tmp_path / ".aider"
-        repo_config_dir.mkdir()
+        assert "test" in registry.commands
+        assert registry.commands["test"].command_type == "shell"
+        assert registry.commands["test"].definition == "echo test"
         
-        config = {
-            "repo-cmd": "git status",
-        }
-        
-        config_path = repo_config_dir / "commands.yaml"
-        with open(config_path, "w") as f:
-            yaml.dump(config, f)
-        
-        with patch("pathlib.Path.home", return_value=tmp_path):
-            with patch("pathlib.Path.cwd", return_value=tmp_path):
-                manager = CustomCommandManager()
-            
-            assert "repo-cmd" in manager.commands
-            assert manager.commands["repo-cmd"].command_type == "shell"
-            assert manager.commands["repo-cmd"].definition == "git status"
+        assert "complex" in registry.commands
+        assert registry.commands["complex"].command_type == "shell"
+        assert registry.commands["complex"].definition == "pytest"
+        assert registry.commands["complex"].description == "Run tests"
 
 
-def test_commands_custom_shell_command():
+def test_commands_user_shell_command():
     io_mock = Mock()
     coder_mock = Mock()
     
@@ -83,20 +61,20 @@ def test_commands_custom_shell_command():
     coder_mock.root = "/"
     coder_mock.cur_messages = []
     
-    # Mock the CustomCommandManager
-    cmd.custom_commands = Mock()
-    cmd.custom_commands.commands = {
-        "test": CustomCommand("test", "shell", "echo {args}", "Test command")
+    # Mock the UserCommandRegistry
+    cmd.user_commands = Mock()
+    cmd.user_commands.commands = {
+        "test": UserCommand("test", "shell", "echo {args}", "Test command")
     }
     
-    # Test running the custom command
+    # Test running the user command
     cmd.do_run("test", "hello")
     
     # Verify that cmd_run was called with the expanded command
     assert io_mock.method_calls
 
 
-def test_commands_custom_plugin_command():
+def test_commands_user_plugin_command():
     io_mock = Mock()
     coder_mock = Mock()
     
@@ -107,10 +85,10 @@ def test_commands_custom_plugin_command():
     
     # Mock the import_string function
     with patch("aider.commands.import_string", return_value=plugin_mock):
-        # Mock the CustomCommandManager
-        cmd.custom_commands = Mock()
-        cmd.custom_commands.commands = {
-            "plugin": CustomCommand(
+        # Mock the UserCommandRegistry
+        cmd.user_commands = Mock()
+        cmd.user_commands.commands = {
+            "plugin": UserCommand(
                 "plugin", 
                 "plugin", 
                 "my_plugin.func", 
@@ -125,7 +103,7 @@ def test_commands_custom_plugin_command():
         plugin_mock.assert_called_once_with(cmd, "test")
 
 
-def test_commands_custom_override_command():
+def test_commands_user_override_command():
     io_mock = Mock()
     coder_mock = Mock()
     
@@ -137,10 +115,10 @@ def test_commands_custom_override_command():
     
     # Mock the import_string function
     with patch("aider.commands.import_string", return_value=override_func):
-        # Mock the CustomCommandManager
-        cmd.custom_commands = Mock()
-        cmd.custom_commands.commands = {
-            "commit": CustomCommand(
+        # Mock the UserCommandRegistry
+        cmd.user_commands = Mock()
+        cmd.user_commands.commands = {
+            "commit": UserCommand(
                 "commit", 
                 "override", 
                 "my_plugin.override_commit", 
@@ -155,19 +133,18 @@ def test_commands_custom_override_command():
         assert result == "Override: test message"
 
 
-def test_custom_command_manager_config_error():
+def test_user_command_registry_config_error():
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
         config_dir = tmp_path / ".config" / "aider"
         config_dir.mkdir(parents=True)
         
         # Write invalid YAML
-        config_path = config_dir / "commands.yaml"
+        config_path = config_dir / ".aider.conf.yml"
         with open(config_path, "w") as f:
             f.write("invalid: yaml: :")
         
-        with patch("pathlib.Path.home", return_value=tmp_path):
-            manager = CustomCommandManager()
+        registry = UserCommandRegistry.from_config([config_path])
             
-            # Should handle the error gracefully
-            assert len(manager.commands) == 0
+        # Should handle the error gracefully
+        assert len(registry.commands) == 0
