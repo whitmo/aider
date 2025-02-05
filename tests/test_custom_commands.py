@@ -5,7 +5,7 @@ import pytest
 import yaml
 from unittest.mock import Mock, patch
 
-from aider.commands import CustomCommand, CustomCommandManager, Commands
+from aider.commands import UserCommand, UserCommandRegistry, Commands
 
 
 def test_custom_command_creation():

@@ -42,38 +42,54 @@ def import_string(import_name):
         raise ImportError(f"Module {module_path} does not define a {class_name} attribute/class") from e
 
 
-class CustomCommand:
+class UserCommand:
     def __init__(self, name, command_type, definition, description=None):
         self.name = name
         self.command_type = command_type  # "shell", "plugin", "override" 
         self.definition = definition
         self.description = description
 
+    def __call__(self, commands, args=""):
+        if self.command_type == "shell":
+            shell_cmd = self.definition.format(args=args)
+            return commands.cmd_run(shell_cmd)
+        elif self.command_type == "plugin":
+            try:
+                plugin_func = import_string(self.definition)
+                return plugin_func(commands, args)
+            except Exception as e:
+                commands.io.tool_error(f"Error running plugin command {self.name}: {e}")
+        elif self.command_type == "override":
+            try:
+                override_func = import_string(self.definition)
+                original_func = getattr(commands, f"cmd_{self.name}", None)
+                return override_func(commands, original_func, args)
+            except Exception as e:
+                commands.io.tool_error(f"Error running override command {self.name}: {e}")
 
-class CustomCommandManager:
-    def __init__(self):
-        self.commands = {}
-        self.config_paths = [
-            Path.home() / ".config" / "aider" / "commands.yaml",  # User level
-            Path.cwd() / ".aider" / "commands.yaml",  # Repo level
-        ]
-        self.load_commands()
 
-    def load_commands(self):
-        for path in self.config_paths:
+class UserCommandRegistry:
+    def __init__(self, commands=None):
+        self.commands = commands or {}
+
+    @classmethod
+    def from_config(cls, config_paths):
+        commands = {}
+        for path in config_paths:
             if path.exists():
                 try:
                     with open(path) as f:
-                        config = yaml.safe_load(f)
-                        for name, cmd_def in config.items():
+                        config = yaml.safe_load(f) or {}
+                        user_commands = config.get("commands", {})
+                        for name, cmd_def in user_commands.items():
                             if isinstance(cmd_def, str):
                                 # Simple shell command alias
-                                self.commands[name] = CustomCommand(
+                                commands[name] = UserCommand(
                                     name, "shell", cmd_def, f"Run: {cmd_def}"
                                 )
                             else:
                                 # Full command definition
-                                self.commands[name] = CustomCommand(
+                                commands[name] = UserCommand(
                                     name,
                                     cmd_def.get("type", "shell"),
                                     cmd_def["definition"],
@@ -81,6 +97,7 @@ class CustomCommandManager:
                                 )
                 except Exception as e:
                     print(f"Error loading commands from {path}: {e}")
+        return cls(commands)
 
 
 from .dump import dump  # noqa: F401
@@ -137,8 +154,8 @@ class Commands:
         self.help = None
         self.editor = editor
         
-        # Initialize custom commands
-        self.custom_commands = CustomCommandManager()
+        # Initialize user commands
+        self.user_commands = None  # Will be set externally
 
     def cmd_model(self, args):
         "Switch to a new LLM"
@@ -288,29 +305,11 @@ class Commands:
         return commands
 
     def do_run(self, cmd_name, args):
-        # First check for custom commands
-        custom_cmd = self.custom_commands.commands.get(cmd_name)
-        if custom_cmd:
-            if custom_cmd.command_type == "shell":
-                # Handle shell command alias
-                shell_cmd = custom_cmd.definition.format(args=args)
-                return self.cmd_run(shell_cmd)
-            elif custom_cmd.command_type == "plugin":
-                # Handle Python plugin
-                try:
-                    plugin_func = import_string(custom_cmd.definition)
-                    return plugin_func(self, args)
-                except Exception as e:
-                    self.io.tool_error(f"Error running plugin command {cmd_name}: {e}")
-            elif custom_cmd.command_type == "override":
-                # Handle override of built-in command
-                try:
-                    override_func = import_string(custom_cmd.definition)
-                    original_func = getattr(self, f"cmd_{cmd_name}", None)
-                    return override_func(self, original_func, args)
-                except Exception as e:
-                    self.io.tool_error(f"Error running override command {cmd_name}: {e}")
-            return
+        # First check for user commands
+        if self.user_commands:
+            user_cmd = self.user_commands.commands.get(cmd_name)
+            if user_cmd:
+                return user_cmd(self, args)
 
         # Fall back to built-in commands
         cmd_name = cmd_name.replace("-", "_")
