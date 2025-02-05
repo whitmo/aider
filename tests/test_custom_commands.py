@@ -62,7 +62,7 @@ def test_custom_command_manager_load_repo_config():
         with open(config_path, "w") as f:
             yaml.dump(config, f)
         
-        with patch("pathlib.Path", return_value=tmp_path):
+        with patch("pathlib.Path.home", return_value=lambda: tmp_path):
             manager = CustomCommandManager()
             
             assert "repo-cmd" in manager.commands
@@ -75,6 +75,10 @@ def test_commands_custom_shell_command():
     coder_mock = Mock()
     
     cmd = Commands(io_mock, coder_mock)
+    
+    # Set up mocks for token counting
+    coder_mock.main_model = Mock()
+    coder_mock.main_model.token_count.return_value = 100
     
     # Mock the CustomCommandManager
     cmd.custom_commands = Mock()
