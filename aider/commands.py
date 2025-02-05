@@ -55,7 +55,7 @@ class CustomCommandManager:
         self.commands = {}
         self.config_paths = [
             Path.home() / ".config" / "aider" / "commands.yaml",  # User level
-            Path(".aider") / "commands.yaml",  # Repo level
+            Path.cwd() / ".aider" / "commands.yaml",  # Repo level
         ]
         self.load_commands()
 

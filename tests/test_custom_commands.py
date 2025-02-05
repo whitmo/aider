@@ -62,8 +62,9 @@ def test_custom_command_manager_load_repo_config():
         with open(config_path, "w") as f:
             yaml.dump(config, f)
         
-        with patch("pathlib.Path.home", return_value=lambda: tmp_path):
-            manager = CustomCommandManager()
+        with patch("pathlib.Path.home", return_value=tmp_path):
+            with patch("pathlib.Path.cwd", return_value=tmp_path):
+                manager = CustomCommandManager()
             
             assert "repo-cmd" in manager.commands
             assert manager.commands["repo-cmd"].command_type == "shell"
