@@ -102,7 +102,7 @@ class CommandLoader:
         return commands
 
     def _load_from_file(self, path) -> dict:
-        if not path.exists():
+        if not Path(path).exists():
             return {}
         
         try:
