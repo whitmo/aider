@@ -77,9 +77,11 @@ def test_commands_custom_shell_command():
     
     cmd = Commands(io_mock, coder_mock)
     
-    # Set up mocks for token counting
+    # Set up mocks for token counting and other attributes
     coder_mock.main_model = Mock()
     coder_mock.main_model.token_count.return_value = 100
+    coder_mock.root = "/"
+    coder_mock.cur_messages = []
     
     # Mock the CustomCommandManager
     cmd.custom_commands = Mock()
