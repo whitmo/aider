@@ -24,7 +24,6 @@ Let's look at how commands work:
 'shell'
 >>> cmd.definition
 'echo {args}'
-```
 
 ## Command Types
 
@@ -42,7 +41,6 @@ Shell commands execute system commands:
 >>> echo_cmd = UserCommand("echo", "shell", "echo {args}")
 >>> echo_cmd.definition
 'echo {args}'
-```
 
 ### Plugin Commands
 
@@ -55,7 +53,6 @@ Plugin commands add new Python functions:
 'plugin'
 >>> greet_cmd.definition
 'mypackage.greetings.say_hello'
-```
 
 A plugin function should accept these parameters:
 - commands: The Commands instance
@@ -77,7 +74,6 @@ Override commands modify existing command behavior:
 >>> add_cmd = UserCommand("add", "override", "mypackage.file_handlers.custom_add")
 >>> add_cmd.command_type
 'override'
-```
 
 Override functions receive:
 - commands: The Commands instance
@@ -117,7 +113,6 @@ Loading commands:
 >>> registry = loader.load_commands()
 >>> len(registry) >= 0  # Will vary based on config
 True
-```
 
 ## Error Handling
 
