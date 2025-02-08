@@ -12,7 +12,9 @@ Let's look at how commands work:
 
 >>> # Create a basic Commands instance for testing
 >>> io = InputOutput()
->>> cmds = Commands(io)
+>>> class MockCoder: pass
+>>> coder = MockCoder()
+>>> cmds = Commands(io, coder)
 
 >>> # Basic command properties
 >>> cmd = UserCommand("echo", "shell", "echo {args}")
