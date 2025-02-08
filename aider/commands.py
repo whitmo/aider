@@ -179,6 +179,19 @@ class CommandLoader:
             return {}
 
     def _create_command(self, name: str, definition) -> UserCommand:
+        """Create a UserCommand from a name and definition.
+        
+        Args:
+            name: The command name
+            definition: Either a string (simple command) or dict (full command spec)
+        
+        Returns:
+            UserCommand: The constructed command object
+        
+        Raises:
+            KeyError: If dict definition missing required 'definition' field
+            ValueError: If unknown command type specified
+        """
         if isinstance(definition, str):
             return UserCommand(
                 name=name,
@@ -186,11 +199,26 @@ class CommandLoader:
                 definition=definition,
                 description=f"Run: {definition}"
             )
+
+        if "definition" not in definition:
+            raise KeyError("Command definition must include 'definition' field")
+
+        command_type = definition.get("type", "shell")
+        if command_type not in {"shell", "plugin", "override"}:
+            raise ValueError(f"Unknown command type: {command_type}")
+
+        # Get help text, preferring 'help' field but falling back to 'description'
+        help_text = (
+            definition.get('help') or 
+            definition.get('description') or
+            f"Run: {definition['definition']}"
+        )
+
         return UserCommand(
             name=name,
-            command_type=definition.get("type", "shell"),
+            command_type=command_type,
             definition=definition["definition"],
-            description=definition.get("description")
+            description=help_text
         )
 
 class UserCommandRegistry:
