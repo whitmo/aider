@@ -1,54 +1,61 @@
-# User-Defined Commands in Aider
+# User Commands in Aider
 
-You can extend aider with custom commands using YAML configuration. There are three types of commands:
+Aider provides a command system that can be extended with custom commands. This document covers the core concepts and includes runnable examples.
 
-## Shell Commands
+## Command Basics
 
-The simplest type - runs a shell command and optionally captures output:
-
-```yaml
-commands:
-  date:                     # simplest form - just the shell command
-    type: shell
-    definition: "date"
-    description: "Show current date and time"
-  
-  echo:                     # uses {args} placeholder
-    type: shell 
-    definition: "echo {args}"
-    description: "Echo arguments back"
-```
+Let's look at how commands work:
 
 ```python
 >>> from aider.commands import UserCommand, Commands
+>>> from aider.io import InputOutput
+
+>>> # Create a basic Commands instance for testing
+>>> io = InputOutput()
+>>> cmds = Commands(io)
+
+>>> # Basic command properties
 >>> cmd = UserCommand("echo", "shell", "echo {args}")
->>> cmd.definition
-'echo {args}'
 >>> cmd.name
 'echo'
+>>> cmd.command_type
+'shell'
+>>> cmd.definition
+'echo {args}'
 ```
 
-## Plugin Commands
+## Command Types
 
-## Plugin Commands
+### Shell Commands
 
-Plugin commands let you add new Python functions:
-
-```yaml
-commands:
-  greet:
-    type: plugin
-    definition: mypackage.greetings.say_hello
-    description: "Greet the user"
-```
+Shell commands execute system commands:
 
 ```python
->>> cmd = UserCommand("greet", "plugin", "mypackage.greetings.say_hello") 
->>> cmd.command_type
-'plugin'
+>>> # Simple shell command
+>>> date_cmd = UserCommand("date", "shell", "date")
+>>> date_cmd.command_type
+'shell'
+
+>>> # Shell command with arguments
+>>> echo_cmd = UserCommand("echo", "shell", "echo {args}")
+>>> echo_cmd.definition
+'echo {args}'
 ```
 
-The plugin function should accept two parameters:
+### Plugin Commands
+
+Plugin commands add new Python functions:
+
+```python
+>>> # Plugin command definition
+>>> greet_cmd = UserCommand("greet", "plugin", "mypackage.greetings.say_hello")
+>>> greet_cmd.command_type
+'plugin'
+>>> greet_cmd.definition
+'mypackage.greetings.say_hello'
+```
+
+A plugin function should accept these parameters:
 - commands: The Commands instance
 - args: String of command arguments
 
@@ -59,50 +66,52 @@ def say_hello(commands, args):
     commands.io.tool_output(f"Hello, {name}!")
 ```
 
-## Override Commands
+### Override Commands
 
-Override commands can modify existing command behavior:
-
-```yaml
-commands:
-  add:
-    type: override
-    definition: mypackage.file_handlers.custom_add
-    description: "Custom file add behavior"
-```
+Override commands modify existing command behavior:
 
 ```python
->>> cmd = UserCommand("add", "override", "mypackage.file_handlers.custom_add")
->>> cmd.command_type
+>>> # Override command
+>>> add_cmd = UserCommand("add", "override", "mypackage.file_handlers.custom_add")
+>>> add_cmd.command_type
 'override'
 ```
 
-Override functions receive three parameters:
-- commands: The Commands instance  
-- original_func: The original command function
-- args: String of command arguments
+Override functions receive:
+- commands: The Commands instance
+- original_func: The original command function  
+- args: Command arguments
 
-Example override implementation:
+Example override:
 ```python
 def custom_add(commands, original_func, args):
-    # Do something before
-    commands.io.tool_output("Pre-processing files...")
-    
-    # Call original implementation
+    commands.io.tool_output("Pre-processing...")
     result = original_func(args)
-    
-    # Do something after
-    commands.io.tool_output("Post-processing files...")
+    commands.io.tool_output("Post-processing...")
     return result
 ```
 
-## Loading Commands
+## Command Configuration
 
-Commands are loaded from your aider config file:
+Commands can be configured via YAML:
 
+```yaml
+commands:
+  date:
+    type: shell
+    definition: "date"
+    description: "Show current date/time"
+    
+  greet:
+    type: plugin
+    definition: mypackage.greetings.say_hello
+    description: "Greet the user"
+```
+
+Loading commands:
 ```python
 >>> from aider.commands import CommandLoader
->>> loader = CommandLoader(["/path/to/config.yml"])
+>>> loader = CommandLoader(["/path/to/config.yml"]) 
 >>> registry = loader.load_commands()
 >>> len(registry) >= 0  # Will vary based on config
 True
@@ -113,7 +122,8 @@ True
 Commands handle errors gracefully:
 
 ```python
->>> cmd = UserCommand("bad", "invalid", "something")  # doctest: +IGNORE_EXCEPTION_DETAIL
+>>> # Invalid command type
+>>> cmd = UserCommand("bad", "invalid", "something") # doctest: +IGNORE_EXCEPTION_DETAIL
 Traceback (most recent call last):
     ...
 ValueError: Unknown command type: invalid
