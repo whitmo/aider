@@ -11,4 +11,4 @@ commands:
         uv pip install -r requirements.txt
         uv pip freeze > requirements.txt
     
-    cmd: uv
+    definition: uv {args}
