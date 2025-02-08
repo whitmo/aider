@@ -16,7 +16,7 @@ def test_command_loading_formats():
 commands:
   test1:
     help: "Test command 1"
-    cmd: echo test1
+    definition: echo test1
 """)
 
         # Test file without top-level commands key
@@ -26,7 +26,7 @@ commands:
 
 test2:
   help: "Test command 2"
-  cmd: echo test2
+  definition: echo test2
 """)
 
         # Test loading both formats
@@ -40,5 +40,7 @@ test2:
         # Verify command properties
         assert commands["test1"].name == "test1"
         assert "Test command 1" in commands["test1"].description
+        assert commands["test1"].definition == "echo test1"
         assert commands["test2"].name == "test2"
         assert "Test command 2" in commands["test2"].description
+        assert commands["test2"].definition == "echo test2"
