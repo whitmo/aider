@@ -41,16 +41,13 @@ Or within aider:
 Let's look at how commands work:
 
 ```python
->>> from aider.commands import UserCommand, Commands
->>> from aider.io import InputOutput
-
->>> # Create a basic Commands instance for testing
+# Create a basic Commands instance for testing
 >>> io = InputOutput()
 >>> class MockCoder: pass
 >>> coder = MockCoder()
 >>> cmds = Commands(io, coder)
 
->>> # Basic command properties
+# Basic command properties
 >>> cmd = UserCommand("echo", "shell", "echo {args}")
 >>> cmd.name
 'echo'

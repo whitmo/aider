@@ -37,12 +37,24 @@ def plugin_dir(tmp_path):
 def test_user_commands_docs():
     """Test user commands documentation"""
     test_dir = Path(__file__).parent
-    docs_file = test_dir.parent / "aider" / "website" / "docs" / "user_commands.md"
+    docs_file = test_dir.parent.parent / "aider" / "website" / "docs" / "user_commands.md"
+    
+    # Add setup code that will be prepended to the markdown content
+    setup = """
+>>> import os
+>>> import tempfile
+>>> from pathlib import Path
+>>> from unittest.mock import Mock, patch
+>>> from aider.io import InputOutput
+>>> from aider.commands import UserCommand, UserCommandRegistry, load_plugin, Commands
+    """
     
     results = doctest.testfile(
         str(docs_file),
         module_relative=False,
         optionflags=doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE,
+        setUp=lambda: None,  # Can add setup if needed
+        globs={'__file__': str(docs_file)},  # Add any needed globals
     )
     
     assert results.failed == 0, f"{results.failed} doctest(s) failed in user_commands.md"
