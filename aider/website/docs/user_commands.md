@@ -2,6 +2,40 @@
 
 Aider provides a command system that can be extended with custom commands. This document covers the core concepts and includes runnable examples.
 
+## Loading Custom Commands
+
+Aider supports three ways to load custom commands:
+
+1. Dotted Path Import:
+```yaml
+commands:
+  hello:
+    type: plugin
+    definition: mypackage.commands.hello
+```
+
+2. Entry Point Import:
+```yaml
+commands:
+  hello:
+    type: plugin 
+    definition: mypackage#hello
+```
+And in your package's pyproject.toml:
+```toml
+[project.entry-points."mypackage_aider_commands"]
+hello = "mypackage.commands:hello_command"
+```
+
+3. Direct YAML File:
+```bash
+$ aider --commands /path/to/commands.yaml
+```
+Or within aider:
+```
+/cmd add /path/to/commands.yaml
+```
+
 ## Command Basics
 
 Let's look at how commands work:

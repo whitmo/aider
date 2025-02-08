@@ -33,6 +33,9 @@ def load_plugin(plugin_spec):
     
     Returns:
         callable: The loaded plugin function
+        
+    Raises:
+        ImportError: If the plugin cannot be loaded, with detailed error information
     """
     if '#' in plugin_spec:
         # Entry point format: package#entry_point
@@ -41,13 +44,20 @@ def load_plugin(plugin_spec):
         from importlib.metadata import entry_points
         try:
             eps = entry_points(group=group)
+            if not eps:
+                raise ImportError(f"No entry points found in group {group}")
             if isinstance(eps, dict):  # Handle different entry_points() return types
+                if entry_point not in eps:
+                    raise ImportError(f"Entry point {entry_point} not found in {group}")
                 plugin = eps[entry_point].load()
             else:
-                plugin = eps[entry_point].load()  # eps is a sequence
+                matching = [ep for ep in eps if ep.name == entry_point]
+                if not matching:
+                    raise ImportError(f"Entry point {entry_point} not found in {group}")
+                plugin = matching[0].load()
             return plugin
-        except (KeyError, ImportError) as e:
-            raise ImportError(f"Could not load plugin {entry_point} from {group}: {str(e)}")
+        except Exception as e:
+            raise ImportError(f"Error loading entry point {entry_point} from {group}: {str(e)}")
     else:
         # Dotted path format: package.module.function
         return import_string(plugin_spec)
