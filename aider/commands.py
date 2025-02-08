@@ -135,11 +135,59 @@ class CommandLoader:
 class UserCommandRegistry:
     def __init__(self, commands=None):
         self.commands = commands or {}
+        self.sources = {}  # path -> set(command_names)
 
     @classmethod
     def from_config(cls, config_paths):
         loader = CommandLoader(config_paths)
-        return cls(loader.load_commands())
+        registry = cls()
+        commands = loader.load_commands()
+        if commands:
+            registry.add_commands("<config>", commands)
+        return registry
+
+    def add_commands(self, path, commands):
+        """Register commands from a source file"""
+        self.sources[path] = set(commands.keys())
+        self.commands.update(commands)
+
+    def drop_commands(self, target):
+        """Remove commands by name or source file"""
+        if target in self.sources:
+            # Remove all commands from this source
+            for name in self.sources[target]:
+                self.commands.pop(name, None)
+            del self.sources[target]
+            return True
+        elif target in self.commands:
+            # Remove single command
+            del self.commands[target]
+            # Update sources
+            for src, names in list(self.sources.items()):
+                if target in names:
+                    names.remove(target)
+                    if not names:
+                        del self.sources[src]
+            return True
+        return False
+
+    def list_commands(self, io):
+        """List all commands grouped by source"""
+        by_source = {}
+        for cmd_name, cmd in self.commands.items():
+            source = None
+            for src, names in self.sources.items():
+                if cmd_name in names:
+                    source = src
+                    break
+            source = source or "<unknown>"
+            by_source.setdefault(source, []).append((cmd_name, cmd))
+
+        for source, cmds in sorted(by_source.items()):
+            io.tool_output(f"\nCommands from {source}:")
+            for name, cmd in sorted(cmds):
+                desc = cmd.description or "No description"
+                io.tool_output(f"  {name:20} : {desc}")
 
 
 from .dump import dump  # noqa: F401
@@ -1421,6 +1469,55 @@ class Commands:
         announcements = "\n".join(self.coder.get_announcements())
         output = f"{announcements}\n{settings}"
         self.io.tool_output(output)
+
+    def cmd_cmd(self, args):
+        """Manage commands dynamically
+        Usage: 
+          /cmd add path/to/commands.yaml  # Add commands from file
+          /cmd drop command-name          # Remove specific command
+          /cmd drop path/to/commands.yaml # Remove all commands from file
+          /cmd list                       # List all commands and sources
+        """
+        words = args.strip().split()
+        if not words:
+            self.io.tool_error("Usage: /cmd [add|drop|list] [path|command]")
+            return
+
+        subcmd = words[0]
+        if subcmd == "add":
+            if len(words) != 2:
+                self.io.tool_error("Usage: /cmd add path/to/commands.yaml")
+                return
+            path = words[1]
+            try:
+                loader = CommandLoader([path])
+                commands = loader.load_commands()
+                if not commands:
+                    self.io.tool_error(f"No commands found in {path}")
+                    return
+                self.user_commands.add_commands(path, commands)
+                names = sorted(commands.keys())
+                self.io.tool_output(f"Added commands: {', '.join(names)}")
+            except Exception as e:
+                self.io.tool_error(f"Error loading commands from {path}: {e}")
+        
+        elif subcmd == "drop":
+            if len(words) != 2:
+                self.io.tool_error("Usage: /cmd drop [command-name|path/to/commands.yaml]")
+                return
+            target = words[1]
+            if not self.user_commands.drop_commands(target):
+                self.io.tool_error(f"No commands found for: {target}")
+            else:
+                self.io.tool_output(f"Removed commands for: {target}")
+        
+        elif subcmd == "list":
+            if not self.user_commands:
+                self.io.tool_output("No commands registered")
+                return
+            self.user_commands.list_commands(self.io)
+        else:
+            self.io.tool_error(f"Unknown subcommand: {subcmd}")
 
     def completions_raw_load(self, document, complete_event):
         return self.completions_raw_read_only(document, complete_event)

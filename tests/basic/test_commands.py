@@ -145,6 +145,65 @@ class TestCommands(TestCase):
             # Assert that tool_error was called with the clipboard error message
             mock_tool_error.assert_called_once_with("Failed to copy to clipboard: Clipboard error")
 
+    def test_cmd_cmd_add_drop_list(self):
+        with GitTemporaryDirectory() as repo_dir:
+            io = InputOutput(pretty=False, fancy_input=False, yes=True)
+            coder = Coder.create(Model("gpt-3.5-turbo"), None, io)
+            commands = Commands(io, coder)
+
+            # Create a test commands file
+            cmd_file = Path(repo_dir) / "test_commands.yaml"
+            cmd_file.write_text("""
+commands:
+  test:
+    type: shell
+    definition: "echo test"
+    description: "Test command"
+  hello:
+    type: shell
+    definition: "echo 'Hello {args}'"
+    description: "Greeting command"
+""")
+
+            # Test adding commands
+            commands.cmd_cmd(f"add {cmd_file}")
+            assert "test" in commands.user_commands.commands
+            assert "hello" in commands.user_commands.commands
+
+            # Test listing commands
+            with mock.patch.object(io, "tool_output") as mock_output:
+                commands.cmd_cmd("list")
+                mock_output.assert_any_call("\nCommands from test_commands.yaml:")
+                mock_output.assert_any_call("  test                : Test command")
+                mock_output.assert_any_call("  hello               : Greeting command")
+
+            # Test dropping single command
+            commands.cmd_cmd("drop test")
+            assert "test" not in commands.user_commands.commands
+            assert "hello" in commands.user_commands.commands
+
+            # Test dropping by file
+            commands.cmd_cmd(f"drop {cmd_file}")
+            assert "hello" not in commands.user_commands.commands
+
+    def test_cmd_cmd_errors(self):
+        io = InputOutput(pretty=False, fancy_input=False, yes=True)
+        coder = Coder.create(Model("gpt-3.5-turbo"), None, io)
+        commands = Commands(io, coder)
+
+        with mock.patch.object(io, "tool_error") as mock_error:
+            # Test invalid subcommand
+            commands.cmd_cmd("invalid")
+            mock_error.assert_called_with("Unknown subcommand: invalid")
+
+            # Test missing file
+            commands.cmd_cmd("add nonexistent.yaml")
+            mock_error.assert_called_with(mock.ANY)  # Error message will vary by OS
+
+            # Test invalid command name
+            commands.cmd_cmd("drop nonexistent")
+            mock_error.assert_called_with("No commands found for: nonexistent")
+
     def test_cmd_add_bad_glob(self):
         # https://github.com/Aider-AI/aider/issues/293
 
