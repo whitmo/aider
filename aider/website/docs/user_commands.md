@@ -26,6 +26,9 @@ commands:
 'echo {args}'
 >>> cmd.name
 'echo'
+```
+
+## Plugin Commands
 
 ## Plugin Commands
 
@@ -43,6 +46,7 @@ commands:
 >>> cmd = UserCommand("greet", "plugin", "mypackage.greetings.say_hello") 
 >>> cmd.command_type
 'plugin'
+```
 
 The plugin function should accept two parameters:
 - commands: The Commands instance
@@ -71,6 +75,7 @@ commands:
 >>> cmd = UserCommand("add", "override", "mypackage.file_handlers.custom_add")
 >>> cmd.command_type
 'override'
+```
 
 Override functions receive three parameters:
 - commands: The Commands instance  
@@ -101,6 +106,7 @@ Commands are loaded from your aider config file:
 >>> registry = loader.load_commands()
 >>> len(registry) >= 0  # Will vary based on config
 True
+```
 
 ## Error Handling
 
