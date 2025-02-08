@@ -142,6 +142,22 @@ class CommandLoader:
         return commands
 
     def _load_from_file(self, path) -> dict:
+        """Load commands from a YAML file.
+        
+        The file can use either format:
+        1. With a top-level 'commands' key:
+            commands:
+              cmd1:
+                help: "Help text"
+                cmd: command
+                
+        2. Direct command definitions:
+            cmd1:
+              help: "Help text"
+              cmd: command
+        
+        Returns a dict of UserCommand objects.
+        """
         if not Path(path).exists():
             return {}
         
