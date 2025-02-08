@@ -66,11 +66,13 @@ def test_command_loading_methods(tmp_path):
 
     # Execute override
     def original_func(args):
+        io_mock.tool_output("Original function called")
         return "original result"
     
     cmd(cmds, original_func, "test args")
     assert io_mock.tool_output.call_args_list == [
         Mock(args=("Pre-processing...",)),
+        Mock(args=("Original function called",)),
         Mock(args=("Post-processing...",))
     ]
 
