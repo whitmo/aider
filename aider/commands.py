@@ -148,7 +148,12 @@ class CommandLoader:
         try:
             with open(path) as f:
                 config = yaml.safe_load(f) or {}
-                user_commands = config.get("commands", {})
+                # Handle both top-level commands and direct command definitions
+                if "commands" in config:
+                    user_commands = config["commands"]
+                else:
+                    # Treat the entire config as commands
+                    user_commands = config
                 return {
                     name: self._create_command(name, cmd_def)
                     for name, cmd_def in user_commands.items()
