@@ -24,6 +24,34 @@ from aider.run_cmd import run_cmd
 from aider.scrape import Scraper, install_playwright
 from aider.utils import is_image_file
 
+def load_plugin(plugin_spec):
+    """Load a plugin from either a dotted path or entry point specification.
+    
+    Args:
+        plugin_spec (str): Either a dotted path ('package.module.function') 
+                          or entry point spec ('package#entry_point')
+    
+    Returns:
+        callable: The loaded plugin function
+    """
+    if '#' in plugin_spec:
+        # Entry point format: package#entry_point
+        package, entry_point = plugin_spec.split('#', 1)
+        group = f'{package}_aider_commands'
+        from importlib.metadata import entry_points
+        try:
+            eps = entry_points(group=group)
+            if isinstance(eps, dict):  # Handle different entry_points() return types
+                plugin = eps[entry_point].load()
+            else:
+                plugin = eps[entry_point].load()  # eps is a sequence
+            return plugin
+        except (KeyError, ImportError) as e:
+            raise ImportError(f"Could not load plugin {entry_point} from {group}: {str(e)}")
+    else:
+        # Dotted path format: package.module.function
+        return import_string(plugin_spec)
+
 def import_string(import_name):
     """Import a module path and return the attribute/class designated by the last name."""
     try:
@@ -80,12 +108,12 @@ class UserCommand:
 
     def _run_plugin(self, commands, args):
         with error_handler(commands.io, f"Error running plugin command {self.name}"):
-            plugin_func = import_string(self.definition)
+            plugin_func = load_plugin(self.definition)
             return plugin_func(commands, args)
 
     def _run_override(self, commands, args):
         with error_handler(commands.io, f"Error running override command {self.name}"):
-            override_func = import_string(self.definition)
+            override_func = load_plugin(self.definition)
             original_func = getattr(commands, f"cmd_{self.name}", None)
             return override_func(commands, original_func, args)
 
