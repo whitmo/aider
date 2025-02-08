@@ -79,13 +79,48 @@ def import_string(import_name):
     except AttributeError as e:
         raise ImportError(f"Module {module_path} does not define a {class_name} attribute/class") from e
 
-
-# Public exports
-__all__ = ['Commands', 'UserCommand', 'UserCommandRegistry', 'load_plugin']
-
 from dataclasses import dataclass
 from typing import Optional, Callable
 from contextlib import contextmanager
+
+@dataclass
+class UserCommand:
+    name: str
+    command_type: str
+    definition: str
+    description: Optional[str] = None
+    _runner: Optional[Callable] = None
+
+    def __post_init__(self):
+        self._dispatch = {
+            "shell": self._run_shell,
+            "plugin": self._run_plugin,
+            "override": self._run_override,
+        }
+        self._runner = self._dispatch.get(self.command_type)
+        if not self._runner:
+            raise ValueError(f"Unknown command type: {self.command_type}")
+
+    def __call__(self, commands, args=""):
+        return self._runner(commands, args)
+
+    def _run_shell(self, commands, args):
+        shell_cmd = self.definition.format(args=args)
+        return commands.cmd_run(shell_cmd)
+
+    def _run_plugin(self, commands, args):
+        with error_handler(commands.io, f"Error running plugin command {self.name}"):
+            plugin_func = load_plugin(self.definition)
+            return plugin_func(commands, args)
+
+    def _run_override(self, commands, args):
+        with error_handler(commands.io, f"Error running override command {self.name}"):
+            override_func = load_plugin(self.definition)
+            original_func = getattr(commands, f"cmd_{self.name}", None)
+            return override_func(commands, original_func, args)
+
+# Public exports
+__all__ = ['Commands', 'UserCommand', 'UserCommandRegistry', 'load_plugin']
 
 @contextmanager
 def error_handler(io, error_prefix):
