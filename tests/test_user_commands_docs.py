@@ -53,6 +53,9 @@ def test_command_loading_methods(tmp_path):
     cmd(cmds, "test args")
     io_mock.tool_output.assert_called_with("Test command called with args: test args")
 
+    # Reset mock between tests
+    io_mock.reset_mock()
+
     # 2. Test override command
     cmd_def = {
         "type": "override",
