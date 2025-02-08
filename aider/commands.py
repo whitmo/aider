@@ -80,6 +80,9 @@ def import_string(import_name):
         raise ImportError(f"Module {module_path} does not define a {class_name} attribute/class") from e
 
 
+# Public exports
+__all__ = ['Commands', 'UserCommand', 'UserCommandRegistry', 'load_plugin']
+
 from dataclasses import dataclass
 from typing import Optional, Callable
 from contextlib import contextmanager
