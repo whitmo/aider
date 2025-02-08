@@ -1408,6 +1408,49 @@ class Commands:
         except Exception as e:
             self.io.tool_error(f"Error processing clipboard content: {e}")
 
+    def cmd_cmd(self, args):
+        "Manage commands (add/drop/list commands from files)"
+        words = args.strip().split()
+        if not words:
+            self.io.tool_error("Usage: /cmd [add|drop|list] [path|command]")
+            return
+
+        subcmd = words[0]
+        if subcmd == "add":
+            if len(words) != 2:
+                self.io.tool_error("Usage: /cmd add path/to/commands.yaml")
+                return
+            path = words[1]
+            try:
+                loader = CommandLoader([path])
+                commands = loader.load_commands()
+                if not commands:
+                    self.io.tool_error(f"No commands found in {path}")
+                    return
+                self.user_commands.add_commands(path, commands)
+                names = sorted(commands.keys())
+                self.io.tool_output(f"Added commands: {', '.join(names)}")
+            except Exception as e:
+                self.io.tool_error(f"Error loading commands from {path}: {e}")
+        
+        elif subcmd == "drop":
+            if len(words) != 2:
+                self.io.tool_error("Usage: /cmd drop [command-name|path/to/commands.yaml]")
+                return
+            target = words[1]
+            if not self.user_commands.drop_commands(target):
+                self.io.tool_error(f"No commands found for: {target}")
+            else:
+                self.io.tool_output(f"Removed commands for: {target}")
+        
+        elif subcmd == "list":
+            if not self.user_commands:
+                self.io.tool_output("No commands registered")
+                return
+            self.user_commands.list_commands(self.io)
+        else:
+            self.io.tool_error(f"Unknown subcommand: {subcmd}")
+
     def cmd_read_only(self, args):
         "Add files to the chat that are for reference only, or turn added files to read-only"
         if not args.strip():
@@ -1508,54 +1551,6 @@ class Commands:
         output = f"{announcements}\n{settings}"
         self.io.tool_output(output)
 
-    def cmd_cmd(self, args):
-        """Manage commands dynamically
-        Usage: 
-          /cmd add path/to/commands.yaml  # Add commands from file
-          /cmd drop command-name          # Remove specific command
-          /cmd drop path/to/commands.yaml # Remove all commands from file
-          /cmd list                       # List all commands and sources
-        """
-        words = args.strip().split()
-        if not words:
-            self.io.tool_error("Usage: /cmd [add|drop|list] [path|command]")
-            return
-
-        subcmd = words[0]
-        if subcmd == "add":
-            if len(words) != 2:
-                self.io.tool_error("Usage: /cmd add path/to/commands.yaml")
-                return
-            path = words[1]
-            try:
-                loader = CommandLoader([path])
-                commands = loader.load_commands()
-                if not commands:
-                    self.io.tool_error(f"No commands found in {path}")
-                    return
-                self.user_commands.add_commands(path, commands)
-                names = sorted(commands.keys())
-                self.io.tool_output(f"Added commands: {', '.join(names)}")
-            except Exception as e:
-                self.io.tool_error(f"Error loading commands from {path}: {e}")
-        
-        elif subcmd == "drop":
-            if len(words) != 2:
-                self.io.tool_error("Usage: /cmd drop [command-name|path/to/commands.yaml]")
-                return
-            target = words[1]
-            if not self.user_commands.drop_commands(target):
-                self.io.tool_error(f"No commands found for: {target}")
-            else:
-                self.io.tool_output(f"Removed commands for: {target}")
-        
-        elif subcmd == "list":
-            if not self.user_commands:
-                self.io.tool_output("No commands registered")
-                return
-            self.user_commands.list_commands(self.io)
-        else:
-            self.io.tool_error(f"Unknown subcommand: {subcmd}")
 
     def completions_raw_load(self, document, complete_event):
         return self.completions_raw_read_only(document, complete_event)
