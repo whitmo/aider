@@ -127,18 +127,19 @@ class CommandLoader:
 
     def _read_yaml(self, path) -> dict:
         """Read and parse YAML from a file."""
-        path = str(Path(path).expanduser())
-        if not Path(path).exists():
+        path = Path(path).expanduser()
+        if not path.exists():
             logger.debug(f"File not found: {path}")
             return {}
 
         try:
-            with open(path, encoding='utf-8') as f:
-                config = yaml.safe_load(f)
-                if config is None:
-                    logger.debug(f"Empty YAML file: {path}")
-                    return {}
-                return config
+            content = path.read_text(encoding='utf-8')
+            config = yaml.safe_load(content)
+            if config is None:
+                logger.debug(f"Empty YAML file: {path}")
+                return {}
+            logger.debug(f"Loaded YAML from {path}: {config}")
+            return config
         except yaml.YAMLError as e:
             logger.warning(f'Failed to parse YAML from {path}: {e}')
             return {}

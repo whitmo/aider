@@ -7,13 +7,12 @@ from typing import Dict, Any
 from aider.user_commands import CommandLoader, UserCommand, UserCommandRegistry
 
 @pytest.fixture
-def temp_yaml_file():
+def temp_yaml_file(tmp_path):
     """Fixture to create and cleanup temporary YAML files."""
     def _create_yaml(content: str) -> Path:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yaml_file = Path(tmpdir) / "commands.yaml"
-            yaml_file.write_text(content)
-            return yaml_file
+        yaml_file = tmp_path / "commands.yaml"
+        yaml_file.write_text(content.strip())
+        return yaml_file
     return _create_yaml
 
 @pytest.fixture
