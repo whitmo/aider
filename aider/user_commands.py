@@ -119,8 +119,9 @@ class CommandLoader:
             try:
                 new_commands = self.load_commands_from_file(path)
                 if new_commands:
+                    logger.debug(f"Loading {len(new_commands)} commands from {path}: {sorted(new_commands.keys())}")
                     all_commands.update(new_commands)
-                    logger.debug(f"Added {len(new_commands)} commands from {path}, total now: {sorted(all_commands.keys())}")
+                    logger.debug(f"Total commands after update: {sorted(all_commands.keys())}")
             except Exception as e:
                 msg = f"Failed to load commands from {path}: {e}"
                 logger.error(msg)
@@ -129,7 +130,8 @@ class CommandLoader:
         if errors and not all_commands:
             # Only raise if we got no commands at all
             raise Exception("\n".join(errors))
-                
+        
+        logger.debug(f"Final commands loaded: {sorted(all_commands.keys())}")
         return all_commands
 
     def load_commands_from_file(self, path) -> dict:
@@ -154,6 +156,8 @@ class CommandLoader:
 
         try:
             content = path.read_text(encoding='utf-8')
+            # Remove leading whitespace from each line to handle indentation
+            content = '\n'.join(line.lstrip() for line in content.splitlines())
             config = yaml.safe_load(content)
             if config is None:
                 logger.debug(f"Empty YAML file: {path}")
