@@ -100,6 +100,20 @@ def command_loader():
         "type": "plugin"
     }),
 ])
+@pytest.mark.parametrize("yaml_content,expected", [
+    # Test basic command with help
+    ("""
+    commands:
+      test1:
+        help: "Test command 1"
+        definition: echo test1
+    """, {
+        "name": "test1",
+        "help_text": "Test command 1",
+        "definition": "echo test1",
+        "type": "shell"
+    }),
+])
 def test_command_loading(temp_yaml_file, command_loader, yaml_content: str, expected: Dict[str, Any]):
     """Test command loading with various YAML formats."""
     yaml_file = temp_yaml_file(yaml_content)
@@ -162,9 +176,10 @@ def test_multiple_command_files(temp_yaml_file):
     """)
     
     file2 = temp_yaml_file("""
-    cmd2:
-      help: "Command 2"
-      definition: echo cmd2
+    commands:
+      cmd2:
+        help: "Command 2"
+        definition: echo cmd2
     """)
     
     loader = CommandLoader([str(file1), str(file2)])
