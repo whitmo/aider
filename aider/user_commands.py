@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Optional, Dict, Set, Callable
 from pathlib import Path
 from contextlib import contextmanager
+from importlib.metadata import entry_points
 
 @contextmanager
 def error_handler(io, error_prefix):
@@ -13,41 +14,43 @@ def error_handler(io, error_prefix):
 
 def load_plugin(plugin_spec):
     """Load a plugin from either a dotted path or entry point specification.
-    
+
     Args:
-        plugin_spec (str): Either a dotted path ('package.module.function') 
+        plugin_spec (str): Either a dotted path ('package.module.function')
                           or entry point spec ('package#entry_point')
-    
+
     Returns:
         callable: The loaded plugin function
-        
+
     Raises:
         ImportError: If the plugin cannot be loaded, with detailed error information
     """
-    if '#' in plugin_spec:
-        # Entry point format: package#entry_point
-        package, entry_point = plugin_spec.split('#', 1)
-        group = f'{package}_aider_commands'
-        from importlib.metadata import entry_points
-        try:
-            eps = entry_points(group=group)
-            if not eps:
-                raise ImportError(f"No entry points found in group {group}")
-            if isinstance(eps, dict):  # Handle different entry_points() return types
-                if entry_point not in eps:
-                    raise ImportError(f"Entry point {entry_point} not found in {group}")
-                plugin = eps[entry_point].load()
-            else:
-                matching = [ep for ep in eps if ep.name == entry_point]
-                if not matching:
-                    raise ImportError(f"Entry point {entry_point} not found in {group}")
-                plugin = matching[0].load()
-            return plugin
-        except Exception as e:
-            raise ImportError(f"Error loading entry point {entry_point} from {group}: {str(e)}")
-    else:
-        # Dotted path format: package.module.function
+    # Dotted path format: package.module.function
+    if not '#' in plugin_spec:
         return import_string(plugin_spec)
+
+    # Entry point format: package#entry_point
+    package, entry_point = plugin_spec.split('#', 1)
+    group = f'{package}_aider_commands'
+    try:
+        eps = entry_points(group=group)
+        if not eps:
+            raise ImportError(f"No entry points found in group {group}")
+        if isinstance(eps, dict):  # Handle different entry_points() return types
+            if entry_point not in eps:
+                raise ImportError(f"Entry point {entry_point} not found in {group}")
+            return eps[entry_point].load()
+
+        matching = [ep for ep in eps if ep.name == entry_point]
+        if not matching:
+            raise ImportError(f"Entry point {entry_point} not found in {group}")
+        return matching[0].load()
+    except ImportError as e:
+        raise e
+    except Exception as e:
+        raise ImportError(f"Error loading entry point {entry_point} from {group}: {str(e)}")
+
+
 
 def import_string(import_name):
     """Import a module path and return the attribute/class designated by the last name."""
@@ -116,7 +119,7 @@ class CommandLoader:
         path = str(Path(path).expanduser())
         if not Path(path).exists():
             return {}
-        
+
         with open(path) as f:
             try:
                 config = yaml.safe_load(f)
@@ -125,15 +128,15 @@ class CommandLoader:
 
             if config is None:
                 return {}
-            
+
             if "commands" in config:
                 user_commands = config["commands"]
             else:
                 user_commands = config
-            
+
             if not user_commands:
                 return {}
-            
+
             return {
                 name: self._create_command(name, cmd_def)
                 for name, cmd_def in user_commands.items()
@@ -156,7 +159,7 @@ class CommandLoader:
             raise ValueError(f"Unknown command type: {command_type}")
 
         help_text = (
-            definition.get('help') or 
+            definition.get('help') or
             definition.get('description') or
             f"Run: {definition['definition']}"
         )
