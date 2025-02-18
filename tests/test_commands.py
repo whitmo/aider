@@ -4,7 +4,7 @@ import tempfile
 import yaml
 from typing import Dict, Any
 
-from aider.commands import CommandLoader, UserCommand, UserCommandRegistry
+from aider.user_commands import CommandLoader, UserCommand, UserCommandRegistry
 
 @pytest.fixture
 def temp_yaml_file():
