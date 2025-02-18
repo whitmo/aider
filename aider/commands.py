@@ -158,25 +158,34 @@ class CommandLoader:
         
         Returns a dict of UserCommand objects.
         """
+        path = os.path.expanduser(path)
         if not Path(path).exists():
-            return {}
+            raise FileNotFoundError(f"Command file not found: {path}")
         
         try:
             with open(path) as f:
-                config = yaml.safe_load(f) or {}
+                config = yaml.safe_load(f)
+                if config is None:
+                    raise ValueError(f"No valid YAML content found in {path}")
+                    
                 # Handle both top-level commands and direct command definitions
                 if "commands" in config:
                     user_commands = config["commands"]
                 else:
                     # Treat the entire config as commands
                     user_commands = config
+                    
+                if not user_commands:
+                    raise ValueError(f"No commands defined in {path}")
+                    
                 return {
                     name: self._create_command(name, cmd_def)
                     for name, cmd_def in user_commands.items()
                 }
+        except yaml.YAMLError as e:
+            raise ValueError(f"Invalid YAML format in {path}: {e}")
         except Exception as e:
-            print(f"Error loading commands from {path}: {e}")
-            return {}
+            raise RuntimeError(f"Error loading commands from {path}: {e}")
 
     def _create_command(self, name: str, definition) -> UserCommand:
         """Create a UserCommand from a name and definition.
@@ -1472,17 +1481,23 @@ class Commands:
                 self.io.tool_error("Usage: /cmd add path/to/commands.yaml")
                 return
             path = words[1]
+            
+            # Initialize user_commands if needed
+            if self.user_commands is None:
+                self.user_commands = UserCommandRegistry()
+                
             try:
                 loader = CommandLoader([path])
                 commands = loader.load_commands()
-                if not commands:
-                    self.io.tool_error(f"No commands found in {path}")
-                    return
                 self.user_commands.add_commands(path, commands)
                 names = sorted(commands.keys())
                 self.io.tool_output(f"Added commands: {', '.join(names)}")
+            except FileNotFoundError as e:
+                self.io.tool_error(str(e))
+            except ValueError as e:
+                self.io.tool_error(str(e))
             except Exception as e:
-                self.io.tool_error(f"Error loading commands from {path}: {e}")
+                self.io.tool_error(f"Unexpected error loading commands: {e}")
         
         elif subcmd == "drop":
             if len(words) != 2:
