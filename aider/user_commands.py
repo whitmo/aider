@@ -121,25 +121,37 @@ class CommandLoader:
         if not Path(path).exists():
             return {}
 
-        with open(path) as f:
-            try:
+        try:
+            with open(path, encoding='utf-8') as f:
                 config = yaml.safe_load(f)
-            except yaml.YAMLError as e:
-                logger.warn(f'{f} failed to load', e)
-                return {}
+        except yaml.YAMLError as e:
+            logger.warning(f'Failed to load {path}: {e}')
+            return {}
+        except Exception as e:
+            logger.warning(f'Error reading {path}: {e}')
+            return {}
 
-            if config is None:
-                return {}
+        if config is None:
+            return {}
 
-            user_commands = config.get("commands", None) or config
+        # Handle both top-level commands and direct command definitions
+        if "commands" in config:
+            user_commands = config["commands"]
+        else:
+            user_commands = config
 
-            if not user_commands:
-                return {}
+        if not isinstance(user_commands, dict):
+            return {}
 
-            return {
-                name: self._create_command(name, cmd_def)
-                for name, cmd_def in user_commands.items()
-            }
+        commands = {}
+        for name, cmd_def in user_commands.items():
+            try:
+                commands[name] = self._create_command(name, cmd_def)
+            except (KeyError, ValueError) as e:
+                logger.warning(f'Failed to create command {name}: {e}')
+                continue
+
+        return commands
 
     def _create_command(self, name: str, definition) -> UserCommand:
         if isinstance(definition, str):
