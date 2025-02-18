@@ -21,10 +21,12 @@ def test_invalid_yaml(caplog):
         f.write("invalid: yaml: :")
         f.flush()
         loader = CommandLoader([f.name])
-        commands = loader.load_commands()
-        assert commands == {}
-        assert "Failed to load commands" in caplog.text
-        assert "mapping values are not allowed here" in caplog.text
+        try:
+            loader.load_commands_from_file(f.name)
+            pytest.fail("Should have raised CommandLoadError")
+        except CommandLoadError as e:
+            assert "mapping values are not allowed here" in str(e)
+            assert "Failed to parse YAML" in str(e)
 
 def test_load_commands_from_file():
     """Test loading commands from a single file"""

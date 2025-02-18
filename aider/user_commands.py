@@ -167,6 +167,7 @@ class CommandLoader:
             logger.debug(f"Loaded YAML from {path}: {config}")
             return config
         except yaml.YAMLError as e:
+            logger.error(f'Failed to parse YAML from {path}: {e}')
             raise CommandLoadError(f'Failed to parse YAML from {path}: {e}')
         except Exception as e:
             logger.warning(f'Error reading file {path}: {e}')
