@@ -1572,7 +1572,7 @@ class UserCommandRegistry:
             by_source.setdefault(source, []).append((cmd_name, cmd))
 
         for source, cmds in sorted(by_source.items()):
-            io.tool_output(f"\nCommands from {source}:")
+            io.tool_output(f"\nCommands from {Path(source).name}:")
             for name, cmd in sorted(cmds):
                 desc = cmd.description or "No description"
                 io.tool_output(f"  {name:20} : {desc}")
