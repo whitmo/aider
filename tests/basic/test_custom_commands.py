@@ -127,6 +127,112 @@ def test_command_loading(temp_yaml_file, command_loader, yaml_content: str, expe
     assert cmd.description == expected["help_text"]
     assert cmd.command_type == expected["type"]
 
+@pytest.mark.parametrize("yaml_content,expected", [
+    # Test basic command with help
+    ("""
+    commands:
+      test1:
+        help: "Test command 1"
+        definition: echo test1
+    """, {
+        "name": "test1",
+        "help_text": "Test command 1",
+        "definition": "echo test1",
+        "type": "shell"
+    }),
+
+    # Test command without top-level commands key
+    ("""
+    test2:
+      help: "Test command 2"
+      definition: echo test2
+    """, {
+        "name": "test2",
+        "help_text": "Test command 2",
+        "definition": "echo test2",
+        "type": "shell"
+    }),
+
+    # Test using description instead of help
+    ("""
+    commands:
+      test3:
+        description: "Test command 3"
+        definition: echo test3
+    """, {
+        "name": "test3",
+        "help_text": "Test command 3",
+        "definition": "echo test3",
+        "type": "shell"
+    }),
+
+    # Test with both help and description (help should win)
+    ("""
+    commands:
+      test4:
+        help: "Help text"
+        description: "Description text"
+        definition: echo test4
+    """, {
+        "name": "test4",
+        "help_text": "Help text",
+        "definition": "echo test4",
+        "type": "shell"
+    }),
+
+    # Test with neither help nor description
+    ("""
+    commands:
+      test5:
+        definition: echo test5
+    """, {
+        "name": "test5",
+        "help_text": "Run: echo test5",
+        "definition": "echo test5",
+        "type": "shell"
+    }),
+
+    # Test custom command type
+    ("""
+    commands:
+      test6:
+        type: plugin
+        help: "Plugin command"
+        definition: my.plugin.func
+    """, {
+        "name": "test6",
+        "help_text": "Plugin command",
+        "definition": "my.plugin.func",
+        "type": "plugin"
+    }),
+])
+def test_command_loading(temp_yaml_file, command_loader, yaml_content: str, expected: Dict[str, Any], caplog):
+    """Test command loading with various YAML formats."""
+    caplog.set_level("DEBUG")
+
+    yaml_file = temp_yaml_file(yaml_content)
+    loader = CommandLoader([str(yaml_file)])
+
+    # First check the YAML parsing
+    yaml_data = loader._read_yaml(str(yaml_file))
+    assert yaml_data, f"Failed to parse YAML content:\n{yaml_content}"
+
+    # Then check command parsing
+    parsed_commands = loader._parse_commands(yaml_data)
+    assert parsed_commands, f"Failed to parse commands from YAML:\n{yaml_data}"
+
+    # Finally check the full loading
+    commands = loader.load_commands()
+
+    name = expected["name"]
+    assert name in commands, f"Command {name} not found in loaded commands. Debug logs:\n{caplog.text}"
+    cmd = commands[name]
+
+    assert cmd.name == name
+    assert cmd.definition == expected["definition"]
+    assert cmd.description == expected["help_text"]
+    assert cmd.command_type == expected["type"]
+
 def test_user_command_creation():
     cmd = UserCommand("test", "shell", "echo test", "Test command")
     assert cmd.name == "test"
