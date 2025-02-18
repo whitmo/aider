@@ -131,9 +131,10 @@ class CommandLoader:
                 logger.error(msg)
                 errors.append(msg)
 
-        if errors and not all_commands:
-            # Only raise if we got no commands at all
-            raise Exception("\n".join(errors))
+        if errors:
+            # Log errors but continue
+            for error in errors:
+                logger.error(error)
 
         logger.debug(f"Final commands loaded: {sorted(all_commands.keys())}")
         return all_commands
