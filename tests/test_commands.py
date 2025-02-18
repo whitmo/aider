@@ -100,34 +100,6 @@ def command_loader():
         "type": "plugin"
     }),
 ])
-@pytest.mark.parametrize("yaml_content,expected", [
-    # Test basic command with help
-    ("""
-    commands:
-      test1:
-        help: "Test command 1"
-        definition: echo test1
-    """, {
-        "name": "test1",
-        "help_text": "Test command 1",
-        "definition": "echo test1",
-        "type": "shell"
-    }),
-])
-def test_command_loading(temp_yaml_file, command_loader, yaml_content: str, expected: Dict[str, Any]):
-    """Test command loading with various YAML formats."""
-    yaml_file = temp_yaml_file(yaml_content)
-    loader = CommandLoader([str(yaml_file)])
-    commands = loader.load_commands()
-    
-    name = expected["name"]
-    assert name in commands, f"Command {name} not found in loaded commands"
-    cmd = commands[name]
-    
-    assert cmd.name == name
-    assert cmd.definition == expected["definition"]
-    assert cmd.description == expected["help_text"]
-    assert cmd.command_type == expected["type"]
 def test_command_loading(temp_yaml_file, command_loader, yaml_content: str, expected: Dict[str, Any]):
     """Test command loading with various YAML formats."""
     yaml_file = temp_yaml_file(yaml_content)
