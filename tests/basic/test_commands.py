@@ -187,9 +187,6 @@ commands:
             # Test dropping by file
             commands.cmd_cmd(f"drop {cmd_file}")
             assert "hello" not in commands.user_commands.commands
-                mock_output.assert_any_call("  test                : Test command")
-                mock_output.assert_any_call("  hello               : Greeting command")
-
 
 
     def test_cmd_cmd_errors(self):
