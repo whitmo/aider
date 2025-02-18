@@ -1562,15 +1562,19 @@ class UserCommandRegistry:
         return False
 
     def list_commands(self, io):
+        if not self.commands and not self.sources:
+            io.tool_output("No commands registered")
+            return
+
         by_source = {}
-        for cmd_name, cmd in self.commands.items():
-            source = None
-            for src, names in self.sources.items():
-                if cmd_name in names:
-                    source = src
-                    break
-            source = source or "<unknown>"
-            by_source.setdefault(source, []).append((cmd_name, cmd))
+        for source, names in self.sources.items():
+            cmds = []
+            for name in names:
+                cmd = self.commands.get(name)
+                if cmd:
+                    cmds.append((name, cmd))
+            if cmds:
+                by_source[source] = cmds
 
         for source, cmds in sorted(by_source.items()):
             source_display = source if source == "<config>" else Path(source).name
