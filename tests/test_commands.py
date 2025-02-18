@@ -9,8 +9,8 @@ from aider.user_commands import CommandLoader, UserCommand, UserCommandRegistry
 @pytest.fixture
 def temp_yaml_file(tmp_path):
     """Fixture to create and cleanup temporary YAML files."""
-    def _create_yaml(content: str) -> Path:
-        yaml_file = tmp_path / "commands.yaml"
+    def _create_yaml(content: str, filename: str = "commands.yaml") -> Path:
+        yaml_file = tmp_path / filename
         yaml_file.write_text(content.strip())
         return yaml_file
     return _create_yaml
@@ -152,18 +152,18 @@ def test_command_loading_errors(command_loader, temp_yaml_file):
 def test_multiple_command_files(temp_yaml_file):
     """Test loading commands from multiple files."""
     file1 = temp_yaml_file("""
-    commands:
-      cmd1:
-        help: "Command 1"
-        definition: echo cmd1
-    """)
-    
+commands:
+  cmd1:
+    help: "Command 1"
+    definition: echo cmd1
+""")
+
     file2 = temp_yaml_file("""
-    commands:
-      cmd2:
-        help: "Command 2"
-        definition: echo cmd2
-    """)
+commands:
+  cmd2:
+    help: "Command 2"
+    definition: echo cmd2
+""", "commands2.yaml")
     
     loader = CommandLoader([str(file1), str(file2)])
     commands = loader.load_commands()
