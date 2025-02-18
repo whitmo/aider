@@ -172,6 +172,13 @@ commands:
             assert "hello" in commands.user_commands.commands
 
 
+            # Test listing commands
+            with mock.patch.object(io, "tool_output") as mock_output:
+                commands.cmd_cmd("list")
+                mock_output.assert_any_call(f"\nCommands from {cmd_file.name}:")
+                mock_output.assert_any_call("  test                 : Test command")
+                mock_output.assert_any_call("  hello                : Greeting command")
+
             # Test dropping single command
             commands.cmd_cmd("drop test")
             assert "test" not in commands.user_commands.commands
@@ -180,11 +187,6 @@ commands:
             # Test dropping by file
             commands.cmd_cmd(f"drop {cmd_file}")
             assert "hello" not in commands.user_commands.commands
-
-            # Test listing commands
-            with mock.patch.object(io, "tool_output") as mock_output:
-                commands.cmd_cmd("list")
-                mock_output.assert_any_call(f"\nCommands from {cmd_file.name}:")
                 mock_output.assert_any_call("  test                : Test command")
                 mock_output.assert_any_call("  hello               : Greeting command")
 
