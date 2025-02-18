@@ -108,7 +108,8 @@ class UserCommand:
     def _run_override(self, commands, args):
         with error_handler(commands.io, f"Error running override command {self.name}"):
             override_func = load_plugin(self.definition)
-            return override_func(commands, args)
+            original_func = getattr(commands, f"cmd_{self.name}")
+            return override_func(commands, original_func, args)
 
 class CommandLoader:
     def __init__(self, config_paths):
