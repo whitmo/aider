@@ -112,7 +112,7 @@ class CommandLoader:
 
     def load_commands(self) -> dict:
         """Load commands from all config paths."""
-        commands = {}
+        all_commands = {}
         for path in self.config_paths:
             try:
                 yaml_content = self._read_yaml(path)
@@ -120,10 +120,11 @@ class CommandLoader:
                     logger.debug(f"Loaded YAML from {path}: {yaml_content}")
                     new_commands = self._parse_commands(yaml_content)
                     logger.debug(f"Parsed commands from {path}: {new_commands}")
-                    commands.update(new_commands)
+                    all_commands.update(new_commands)
+                    logger.debug(f"Updated commands dict, now contains: {list(all_commands.keys())}")
             except Exception as e:
                 logger.error(f"Failed to load commands from {path}: {e}")
-        return commands
+        return all_commands
 
     def _read_yaml(self, path) -> dict:
         """Read and parse YAML from a file."""
