@@ -15,14 +15,16 @@ def test_missing_config():
     loader = CommandLoader(["/nonexistent/path"])
     assert loader.load_commands() == {}
 
-def test_invalid_yaml():
+def test_invalid_yaml(caplog):
     """Test handling of invalid YAML files"""
     with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml') as f:
         f.write("invalid: yaml: :")
         f.flush()
         loader = CommandLoader([f.name])
-        with pytest.raises(CommandLoadError):
-            loader.load_commands()
+        commands = loader.load_commands()
+        assert commands == {}
+        assert "Failed to load commands" in caplog.text
+        assert "mapping values are not allowed here" in caplog.text
 
 def test_load_commands_from_file():
     """Test loading commands from a single file"""
