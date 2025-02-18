@@ -113,14 +113,22 @@ class CommandLoader:
     def load_commands(self) -> dict:
         """Load commands from all config paths."""
         all_commands = {}
+        errors = []
+        
         for path in self.config_paths:
             try:
                 new_commands = self.load_commands_from_file(path)
-                all_commands.update(new_commands)
-                logger.debug(f"Added {len(new_commands)} commands from {path}, total now: {sorted(all_commands.keys())}")
+                if new_commands:
+                    all_commands.update(new_commands)
+                    logger.debug(f"Added {len(new_commands)} commands from {path}, total now: {sorted(all_commands.keys())}")
             except Exception as e:
-                logger.error(f"Failed to load commands from {path}: {e}")
-                raise  # Re-raise to expose failures
+                msg = f"Failed to load commands from {path}: {e}"
+                logger.error(msg)
+                errors.append(msg)
+        
+        if errors and not all_commands:
+            # Only raise if we got no commands at all
+            raise Exception("\n".join(errors))
                 
         return all_commands
 
