@@ -173,7 +173,7 @@ commands:
             # Test listing commands
             with mock.patch.object(io, "tool_output") as mock_output:
                 commands.cmd_cmd("list")
-                mock_output.assert_any_call("\nCommands from test_commands.yaml:")
+                mock_output.assert_any_call(f"\nCommands from {cmd_file.name}:")
                 mock_output.assert_any_call("  test                : Test command")
                 mock_output.assert_any_call("  hello               : Greeting command")
 
