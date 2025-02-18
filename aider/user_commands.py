@@ -114,6 +114,10 @@ class CommandLoader:
     def __init__(self, config_paths):
         self.config_paths = config_paths
 
+    @classmethod
+    def load_from(cls, config_paths):
+        return cls(config_paths).load_commands()
+
     def load_commands(self) -> dict:
         """Load commands from all config paths."""
         all_commands = {}
@@ -223,54 +227,3 @@ class CommandLoader:
             definition=definition["definition"],
             description=help_text
         )
-
-class UserCommandRegistry:
-    def __init__(self, commands=None):
-        self.commands = commands or {}
-        self.sources: Dict[str, Set[str]] = {}
-
-    @classmethod
-    def from_config(cls, config_paths):
-        loader = CommandLoader(config_paths)
-        registry = cls()
-        commands = loader.load_commands()
-        if commands:
-            registry.add_commands("<config>", commands)
-        return registry
-
-    def add_commands(self, path, commands):
-        self.sources[path] = set(commands.keys())
-        self.commands.update(commands)
-
-    def drop_commands(self, target):
-        if target in self.sources:
-            for name in self.sources[target]:
-                self.commands.pop(name, None)
-            del self.sources[target]
-            return True
-        elif target in self.commands:
-            del self.commands[target]
-            for src, names in list(self.sources.items()):
-                if target in names:
-                    names.remove(target)
-                    if not names:
-                        del self.sources[src]
-            return True
-        return False
-
-    def list_commands(self, io):
-        by_source = {}
-        for cmd_name, cmd in self.commands.items():
-            source = None
-            for src, names in self.sources.items():
-                if cmd_name in names:
-                    source = src
-                    break
-            source = source or "<unknown>"
-            by_source.setdefault(source, []).append((cmd_name, cmd))
-
-        for source, cmds in sorted(by_source.items()):
-            io.tool_output(f"\nCommands from {source}:")
-            for name, cmd in sorted(cmds):
-                desc = cmd.description or "No description"
-                io.tool_output(f"  {name:20} : {desc}")

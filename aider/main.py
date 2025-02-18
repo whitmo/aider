@@ -847,7 +847,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
 
     # Load user commands from config files
     config_files = generate_search_path_list(".aider.conf.yml", git_root, args.config)
-    user_commands = UserCommandRegistry.from_config(config_files)
+
 
     commands = Commands(
         io,
@@ -861,7 +861,8 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         verbose=args.verbose,
         editor=args.editor,
     )
-    commands.user_commands = user_commands
+
+    commands.user_commands.load_from_config(config_files)
 
     summarizer = ChatSummary(
         [main_model.weak_model, main_model],

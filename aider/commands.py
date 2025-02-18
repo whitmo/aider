@@ -8,7 +8,7 @@ from collections import OrderedDict
 from os.path import expanduser
 from pathlib import Path
 
-from aider.user_commands import UserCommand, UserCommandRegistry, CommandLoader
+from aider.user_commands import UserCommand, CommandLoader
 
 # Public exports
 __all__ = ['Commands']
@@ -50,6 +50,7 @@ class Commands:
             parser=self.parser,
             verbose=self.verbose,
             editor=self.editor,
+            ucr=self.user_commands
         )
 
     def __init__(
@@ -64,6 +65,7 @@ class Commands:
         parser=None,
         verbose=False,
         editor=None,
+        ucr=None,
     ):
         self.io = io
         self.coder = coder
@@ -81,9 +83,8 @@ class Commands:
 
         self.help = None
         self.editor = editor
-        
-        # Initialize user commands
-        self.user_commands = None  # Will be set externally
+
+        self.user_commands = ucr or UserCommandRegistry(parent=self)
 
     def cmd_model(self, args):
         "Switch to a new LLM"
@@ -229,15 +230,13 @@ class Commands:
             cmd = attr[4:]
             cmd = cmd.replace("_", "-")
             commands.append("/" + cmd)
-
+        commands.extend(self.user_commands.cmd_names())
         return commands
 
     def do_run(self, cmd_name, args):
         # First check for user commands
-        if self.user_commands:
-            user_cmd = self.user_commands.commands.get(cmd_name)
-            if user_cmd:
-                return user_cmd(self, args)
+        if cmd_name in self.user_commands:
+            return self.user_commands.run(self.io, cmd_name, args)
 
         # Fall back to built-in commands
         cmd_name = cmd_name.replace("-", "_")
@@ -272,6 +271,7 @@ class Commands:
         res = self.matching_commands(inp)
         if res is None:
             return
+
         matching_commands, first_word, rest_inp = res
         if len(matching_commands) == 1:
             command = matching_commands[0][1:]
@@ -1221,14 +1221,9 @@ class Commands:
                 self.io.tool_error("Usage: /cmd add path/to/commands.yaml")
                 return
             path = words[1]
-            
-            # Initialize user_commands if needed
-            if self.user_commands is None:
-                self.user_commands = UserCommandRegistry()
-                
+
             try:
-                loader = CommandLoader([path])
-                commands = loader.load_commands()
+                commands = CommandLoader.load_from([path])
                 self.user_commands.add_commands(path, commands)
                 names = sorted(commands.keys())
                 self.io.tool_output(f"Added commands: {', '.join(names)}")
@@ -1238,7 +1233,7 @@ class Commands:
                 self.io.tool_error(str(e))
             except Exception as e:
                 self.io.tool_error(f"Unexpected error loading commands: {e}")
-        
+
         elif subcmd == "drop":
             if len(words) != 2:
                 self.io.tool_error("Usage: /cmd drop [command-name|path/to/commands.yaml]")
@@ -1248,7 +1243,7 @@ class Commands:
                 self.io.tool_error(f"No commands found for: {target}")
             else:
                 self.io.tool_output(f"Removed commands for: {target}")
-        
+
         elif subcmd == "list":
             if not self.user_commands:
                 self.io.tool_output("No commands registered")
@@ -1515,6 +1510,72 @@ Just show me the edits I need to make.
             )
         except Exception as e:
             self.io.tool_error(f"An unexpected error occurred while copying to clipboard: {str(e)}")
+
+class UserCommandRegistry:
+    def __init__(self, commands=None, parent=None):
+        self.commands = commands or {}
+        self.sources: Dict[str, Set[str]] = {}
+        self.file_loader = CommandLoader.load_from
+
+        self.cmd_parent = parent
+
+    def __contains__(self, cmd_name):
+        return cmd_name in self.commands
+
+    def run(self, io, name, args=""):
+        cmd = self.commands.get(name)
+        try:
+            return cmd(self.cmd_parent, args)
+        except Exception as e:
+            io.tool_error(f"Error running command {name}: {e}")
+            return False
+
+    def cmd_names(self):
+        "Add a / prefix"
+        return [f"/{x}" for x in self.commands.keys()]
+
+    def load_from_config(self, config_paths):
+        commands = self.file_loader(config_paths)
+        if commands:
+            self.add_commands("<config>", commands)
+        return self
+
+    def add_commands(self, path, commands):
+        self.sources[path] = set(commands.keys())
+        self.commands.update(commands)
+
+    def drop_commands(self, target):
+        if target in self.sources:
+            for name in self.sources[target]:
+                self.commands.pop(name, None)
+            del self.sources[target]
+            return True
+        elif target in self.commands:
+            del self.commands[target]
+            for src, names in list(self.sources.items()):
+                if target in names:
+                    names.remove(target)
+                    if not names:
+                        del self.sources[src]
+            return True
+        return False
+
+    def list_commands(self, io):
+        by_source = {}
+        for cmd_name, cmd in self.commands.items():
+            source = None
+            for src, names in self.sources.items():
+                if cmd_name in names:
+                    source = src
+                    break
+            source = source or "<unknown>"
+            by_source.setdefault(source, []).append((cmd_name, cmd))
+
+        for source, cmds in sorted(by_source.items()):
+            io.tool_output(f"\nCommands from {source}:")
+            for name, cmd in sorted(cmds):
+                desc = cmd.description or "No description"
+                io.tool_output(f"  {name:20} : {desc}")
 
 
 def expand_subdir(file_path):
