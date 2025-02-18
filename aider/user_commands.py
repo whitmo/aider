@@ -4,6 +4,9 @@ from typing import Optional, Dict, Set, Callable
 from pathlib import Path
 from contextlib import contextmanager
 from importlib.metadata import entry_points
+import logging
+
+logger = logging.getLogger(__name__)
 
 @contextmanager
 def error_handler(io, error_prefix):
@@ -11,6 +14,7 @@ def error_handler(io, error_prefix):
         yield
     except Exception as e:
         io.tool_error(f"{error_prefix}: {e}")
+
 
 def load_plugin(plugin_spec):
     """Load a plugin from either a dotted path or entry point specification.
@@ -49,8 +53,6 @@ def load_plugin(plugin_spec):
         raise e
     except Exception as e:
         raise ImportError(f"Error loading entry point {entry_point} from {group}: {str(e)}")
-
-
 
 def import_string(import_name):
     """Import a module path and return the attribute/class designated by the last name."""
@@ -122,16 +124,14 @@ class CommandLoader:
         with open(path) as f:
             try:
                 config = yaml.safe_load(f)
-            except yaml.YAMLError:
+            except yaml.YAMLError as e:
+                logger.warn(f'{f} failed to load', e)
                 return {}
 
             if config is None:
                 return {}
 
-            if "commands" in config:
-                user_commands = config["commands"]
-            else:
-                user_commands = config
+            user_commands = config.get("commands", None) or config
 
             if not user_commands:
                 return {}
