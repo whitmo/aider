@@ -3,7 +3,8 @@ from pathlib import Path
 import tempfile
 import yaml
 
-from aider.user_commands import CommandLoader, UserCommand, UserCommandRegistry, CommandLoadError
+from aider.user_commands import CommandLoader, UserCommand, CommandLoadError
+from aider.commands import UserCommandRegistry
 
 def test_empty_config():
     """Test that aider starts up without a commands file"""

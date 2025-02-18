@@ -5,7 +5,8 @@ import textwrap
 import yaml
 from typing import Dict, Any
 
-from aider.user_commands import CommandLoader, UserCommand, UserCommandRegistry
+from aider.user_commands import CommandLoader, UserCommand
+from aider.commands import UserCommandRegistry
 
 @pytest.fixture
 def temp_yaml_file(tmp_path):
