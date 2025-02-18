@@ -1,6 +1,7 @@
 import os
 import tempfile
 import codecs
+
 import textwrap
 from pathlib import Path
 import pytest
@@ -12,13 +13,12 @@ import git
 import pyperclip
 from io import StringIO
 
+
 from aider.commands import UserCommand, UserCommandRegistry, Commands, SwitchCoder
 from aider.user_commands import CommandLoader, CommandLoadError
 from aider.io import InputOutput
 from aider.models import Model
 from aider.utils import ChdirTemporaryDirectory, GitTemporaryDirectory, make_repo
-
-# Test fixtures
 
 
 @pytest.mark.parametrize("yaml_content,expected", [
@@ -34,7 +34,7 @@ from aider.utils import ChdirTemporaryDirectory, GitTemporaryDirectory, make_rep
         "definition": "echo test1",
         "type": "shell"
     }),
-    
+
     # Test command without top-level commands key
     ("""
     test2:
@@ -46,7 +46,7 @@ from aider.utils import ChdirTemporaryDirectory, GitTemporaryDirectory, make_rep
         "definition": "echo test2",
         "type": "shell"
     }),
-    
+
     # Test using description instead of help
     ("""
     commands:
@@ -59,7 +59,7 @@ from aider.utils import ChdirTemporaryDirectory, GitTemporaryDirectory, make_rep
         "definition": "echo test3",
         "type": "shell"
     }),
-    
+
     # Test with both help and description (help should win)
     ("""
     commands:
@@ -73,7 +73,7 @@ from aider.utils import ChdirTemporaryDirectory, GitTemporaryDirectory, make_rep
         "definition": "echo test4",
         "type": "shell"
     }),
-    
+
     # Test with neither help nor description
     ("""
     commands:
@@ -85,7 +85,7 @@ from aider.utils import ChdirTemporaryDirectory, GitTemporaryDirectory, make_rep
         "definition": "echo test5",
         "type": "shell"
     }),
-    
+
     # Test custom command type
     ("""
     commands:
@@ -103,25 +103,25 @@ from aider.utils import ChdirTemporaryDirectory, GitTemporaryDirectory, make_rep
 def test_command_loading(temp_yaml_file, command_loader, yaml_content: str, expected: Dict[str, Any], caplog):
     """Test command loading with various YAML formats."""
     caplog.set_level("DEBUG")
-    
+
     yaml_file = temp_yaml_file(yaml_content)
     loader = CommandLoader([str(yaml_file)])
-    
+
     # First check the YAML parsing
     yaml_data = loader._read_yaml(str(yaml_file))
     assert yaml_data, f"Failed to parse YAML content:\n{yaml_content}"
-    
+
     # Then check command parsing
     parsed_commands = loader._parse_commands(yaml_data)
     assert parsed_commands, f"Failed to parse commands from YAML:\n{yaml_data}"
-    
+
     # Finally check the full loading
     commands = loader.load_commands()
-    
+
     name = expected["name"]
     assert name in commands, f"Command {name} not found in loaded commands. Debug logs:\n{caplog.text}"
     cmd = commands[name]
-    
+
     assert cmd.name == name
     assert cmd.definition == expected["definition"]
     assert cmd.description == expected["help_text"]
@@ -140,7 +140,7 @@ def test_user_command_registry_load_config():
         tmp_path = Path(tmpdir)
         config_dir = tmp_path / ".config" / "aider"
         config_dir.mkdir(parents=True)
-        
+
         config = {
             "commands": {
                 "test": "echo test",
@@ -151,19 +151,19 @@ def test_user_command_registry_load_config():
                 }
             }
         }
-        
+
         config_path = config_dir / ".aider.conf.yml"
         with open(config_path, "w") as f:
             yaml.dump(config, f)
-        
+
         commands = CommandLoader.load_from([config_path])
         registry = UserCommandRegistry()
         registry.add_commands(str(config_path), commands)
-            
+
         assert "test" in registry.commands
         assert registry.commands["test"].command_type == "shell"
         assert registry.commands["test"].definition == "echo test"
-        
+
         assert "complex" in registry.commands
         assert registry.commands["complex"].command_type == "shell"
         assert registry.commands["complex"].definition == "pytest"
@@ -173,25 +173,25 @@ def test_user_command_registry_load_config():
 def test_commands_user_shell_command():
     io_mock = Mock()
     coder_mock = Mock()
-    
+
     cmd = Commands(io_mock, coder_mock)
-    
+
     # Set up mocks for token counting and other attributes
     coder_mock.main_model = Mock()
     coder_mock.main_model.token_count.return_value = 100
     coder_mock.root = "/"
     coder_mock.cur_messages = []
-    
+
     # Create a real UserCommandRegistry with a test command
     cmd.user_commands = UserCommandRegistry(parent=cmd)
     cmd.user_commands.add_commands(
         "test.yaml",
         {"test": UserCommand("test", "shell", "echo {args}", "Test command")}
     )
-    
+
     # Test running the user command
     cmd.do_run("test", "hello")
-    
+
     # Verify that tool_output was called
     io_mock.tool_output.assert_called()
 
@@ -199,12 +199,12 @@ def test_commands_user_shell_command():
 def test_commands_user_plugin_command():
     io_mock = Mock()
     coder_mock = Mock()
-    
+
     cmd = Commands(io_mock, coder_mock)
-    
+
     # Create a mock plugin function
     plugin_mock = Mock()
-    
+
     # Mock the import_string function
     with patch("aider.user_commands.import_string", return_value=plugin_mock):
         # Create a real UserCommandRegistry with a plugin command
@@ -212,16 +212,16 @@ def test_commands_user_plugin_command():
         cmd.user_commands.add_commands(
             "test.yaml",
             {"plugin": UserCommand(
-                "plugin", 
-                "plugin", 
-                "my_plugin.func", 
+                "plugin",
+                "plugin",
+                "my_plugin.func",
                 "Plugin command"
             )}
         )
-        
+
         # Test running the plugin command
         cmd.do_run("plugin", "test")
-        
+
         # Verify that the plugin function was called
         plugin_mock.assert_called_once_with(cmd, "test")
 
@@ -229,13 +229,13 @@ def test_commands_user_plugin_command():
 def test_commands_user_override_command():
     io_mock = Mock()
     coder_mock = Mock()
-    
+
     cmd = Commands(io_mock, coder_mock)
-    
+
     # Create a mock override function
     def override_func(commands, original_func, args):
         return f"Override: {args}"
-    
+
     # Mock the import_string function
     with patch("aider.user_commands.import_string", return_value=override_func):
         # Create a real UserCommandRegistry with an override command
@@ -243,16 +243,16 @@ def test_commands_user_override_command():
         cmd.user_commands.add_commands(
             "test.yaml",
             {"commit": UserCommand(
-                "commit", 
-                "override", 
-                "my_plugin.override_commit", 
+                "commit",
+                "override",
+                "my_plugin.override_commit",
                 "Override commit"
             )}
         )
-        
+
         # Test running the override command
         result = cmd.do_run("commit", "test message")
-        
+
         # Verify the result
         assert result == "Override: test message"
 
@@ -262,19 +262,19 @@ def test_user_command_registry_config_error():
         tmp_path = Path(tmpdir)
         config_dir = tmp_path / ".config" / "aider"
         config_dir.mkdir(parents=True)
-        
+
         # Write invalid YAML
         config_path = config_dir / ".aider.conf.yml"
         with open(config_path, "w") as f:
             f.write("invalid: yaml: :")
-        
+
         registry = UserCommandRegistry()
         try:
             commands = CommandLoader.load_from([config_path])
             registry.add_commands(str(config_path), commands)
         except CommandLoadError:
             pass
-            
+
         # Should handle the error gracefully
         assert len(registry.commands) == 0
 
@@ -314,7 +314,7 @@ def test_load_commands_from_file():
             }
         }, f)
         f.flush()
-        
+
         loader = CommandLoader([])
         commands = loader.load_commands_from_file(f.name)
         assert len(commands) == 1
@@ -323,29 +323,29 @@ def test_load_commands_from_file():
 def test_command_registry_lifecycle():
     """Test the full lifecycle of commands in the registry"""
     registry = UserCommandRegistry()
-    
+
     # Test adding commands
     cmd1 = UserCommand("test1", "shell", "echo test1", "Test command 1")
     cmd2 = UserCommand("test2", "shell", "echo test2", "Test command 2")
-    
+
     registry.add_commands("source1.yaml", {"test1": cmd1})
     registry.add_commands("source2.yaml", {"test2": cmd2})
-    
+
     assert "test1" in registry.commands
     assert "test2" in registry.commands
     assert registry.sources["source1.yaml"] == {"test1"}
     assert registry.sources["source2.yaml"] == {"test2"}
-    
+
     # Test dropping by source
     assert registry.drop_commands("source1.yaml")
     assert "test1" not in registry.commands
     assert "source1.yaml" not in registry.sources
-    
+
     # Test dropping by command name
     assert registry.drop_commands("test2")
     assert "test2" not in registry.commands
     assert not registry.sources
-    
+
     # Test dropping non-existent
     assert not registry.drop_commands("nonexistent")
 
@@ -379,11 +379,11 @@ def commands(io, gpt35):
 def test_command_types():
     """Test different command types"""
     loader = CommandLoader([])
-    
+
     # Test shell command
     shell_cmd = loader._create_command("test", "echo test")
     assert shell_cmd.command_type == "shell"
-    
+
     # Test plugin command
     plugin_def = {
         "type": "plugin",
@@ -392,7 +392,7 @@ def test_command_types():
     }
     plugin_cmd = loader._create_command("test", plugin_def)
     assert plugin_cmd.command_type == "plugin"
-    
+
     # Test invalid type
     with pytest.raises(ValueError):
         loader._create_command("test", {"type": "invalid", "definition": "test"})
