@@ -115,16 +115,28 @@ def test_command_loading(temp_yaml_file, command_loader, yaml_content: str, expe
     assert cmd.description == expected["help_text"]
     assert cmd.command_type == expected["type"]
 
-def test_command_loading_errors(command_loader):
+def test_command_loading_errors(command_loader, temp_yaml_file):
     """Test error cases in command loading."""
+    # Test missing definition
     with pytest.raises(KeyError, match="definition"):
         command_loader._create_command("bad", {"help": "Missing definition"})
     
+    # Test invalid command type
     with pytest.raises(ValueError, match="Unknown command type"):
         command_loader._create_command("bad", {
             "type": "invalid",
             "definition": "echo bad"
         })
+        
+    # Test empty YAML file
+    empty_file = temp_yaml_file("")
+    loader = CommandLoader([str(empty_file)])
+    assert loader.load_commands() == {}
+    
+    # Test invalid YAML
+    invalid_file = temp_yaml_file("{{")
+    loader = CommandLoader([str(invalid_file)])
+    assert loader.load_commands() == {}
 
 def test_multiple_command_files(temp_yaml_file):
     """Test loading commands from multiple files."""
@@ -153,20 +165,44 @@ def test_command_registry():
     registry = UserCommandRegistry()
     
     # Test adding commands
-    commands = {
-        "test": UserCommand(
-            name="test",
+    commands1 = {
+        "test1": UserCommand(
+            name="test1",
             command_type="shell",
-            definition="echo test",
-            description="Test command"
+            definition="echo test1",
+            description="Test command 1"
         )
     }
-    registry.add_commands("test.yaml", commands)
-    assert "test" in registry.commands
+    commands2 = {
+        "test2": UserCommand(
+            name="test2",
+            command_type="shell", 
+            definition="echo test2",
+            description="Test command 2"
+        )
+    }
     
-    # Test dropping commands
-    assert registry.drop_commands("test.yaml")
-    assert "test" not in registry.commands
+    # Add commands from different sources
+    registry.add_commands("test1.yaml", commands1)
+    registry.add_commands("test2.yaml", commands2)
+    
+    # Verify commands were added
+    assert "test1" in registry.commands
+    assert "test2" in registry.commands
+    assert registry.sources["test1.yaml"] == {"test1"}
+    assert registry.sources["test2.yaml"] == {"test2"}
+    
+    # Test dropping commands by source
+    assert registry.drop_commands("test1.yaml")
+    assert "test1" not in registry.commands
+    assert "test2" in registry.commands
+    assert "test1.yaml" not in registry.sources
+    
+    # Test dropping commands by name
+    assert registry.drop_commands("test2")
+    assert "test2" not in registry.commands
+    assert not registry.sources
     
     # Test dropping non-existent commands
+    assert not registry.drop_commands("nonexistent")
     assert not registry.drop_commands("nonexistent.yaml")
