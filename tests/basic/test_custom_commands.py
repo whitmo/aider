@@ -37,7 +37,9 @@ def test_user_command_registry_load_config():
         with open(config_path, "w") as f:
             yaml.dump(config, f)
         
-        registry = UserCommandRegistry.from_config([config_path])
+        commands = CommandLoader.load_from([config_path])
+        registry = UserCommandRegistry()
+        registry.add_commands(str(config_path), commands)
             
         assert "test" in registry.commands
         assert registry.commands["test"].command_type == "shell"
@@ -61,17 +63,18 @@ def test_commands_user_shell_command():
     coder_mock.root = "/"
     coder_mock.cur_messages = []
     
-    # Mock the UserCommandRegistry
-    cmd.user_commands = Mock()
-    cmd.user_commands.commands = {
-        "test": UserCommand("test", "shell", "echo {args}", "Test command")
-    }
+    # Create a real UserCommandRegistry with a test command
+    cmd.user_commands = UserCommandRegistry(parent=cmd)
+    cmd.user_commands.add_commands(
+        "test.yaml",
+        {"test": UserCommand("test", "shell", "echo {args}", "Test command")}
+    )
     
     # Test running the user command
     cmd.do_run("test", "hello")
     
-    # Verify that cmd_run was called with the expanded command
-    assert io_mock.method_calls
+    # Verify that tool_output was called
+    io_mock.tool_output.assert_called()
 
 
 def test_commands_user_plugin_command():
@@ -84,17 +87,18 @@ def test_commands_user_plugin_command():
     plugin_mock = Mock()
     
     # Mock the import_string function
-    with patch("aider.commands.import_string", return_value=plugin_mock):
-        # Mock the UserCommandRegistry
-        cmd.user_commands = Mock()
-        cmd.user_commands.commands = {
-            "plugin": UserCommand(
+    with patch("aider.user_commands.import_string", return_value=plugin_mock):
+        # Create a real UserCommandRegistry with a plugin command
+        cmd.user_commands = UserCommandRegistry(parent=cmd)
+        cmd.user_commands.add_commands(
+            "test.yaml",
+            {"plugin": UserCommand(
                 "plugin", 
                 "plugin", 
                 "my_plugin.func", 
                 "Plugin command"
-            )
-        }
+            )}
+        )
         
         # Test running the plugin command
         cmd.do_run("plugin", "test")
@@ -114,17 +118,18 @@ def test_commands_user_override_command():
         return f"Override: {args}"
     
     # Mock the import_string function
-    with patch("aider.commands.import_string", return_value=override_func):
-        # Mock the UserCommandRegistry
-        cmd.user_commands = Mock()
-        cmd.user_commands.commands = {
-            "commit": UserCommand(
+    with patch("aider.user_commands.import_string", return_value=override_func):
+        # Create a real UserCommandRegistry with an override command
+        cmd.user_commands = UserCommandRegistry(parent=cmd)
+        cmd.user_commands.add_commands(
+            "test.yaml",
+            {"commit": UserCommand(
                 "commit", 
                 "override", 
                 "my_plugin.override_commit", 
                 "Override commit"
-            )
-        }
+            )}
+        )
         
         # Test running the override command
         result = cmd.do_run("commit", "test message")
@@ -144,7 +149,12 @@ def test_user_command_registry_config_error():
         with open(config_path, "w") as f:
             f.write("invalid: yaml: :")
         
-        registry = UserCommandRegistry.from_config([config_path])
+        registry = UserCommandRegistry()
+        try:
+            commands = CommandLoader.load_from([config_path])
+            registry.add_commands(str(config_path), commands)
+        except CommandLoadError:
+            pass
             
         # Should handle the error gracefully
         assert len(registry.commands) == 0
