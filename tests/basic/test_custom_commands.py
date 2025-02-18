@@ -1,14 +1,22 @@
 import os
 import tempfile
+import codecs
 from pathlib import Path
 import pytest
 import yaml
 from unittest.mock import Mock, patch
 
-from aider.commands import UserCommand, UserCommandRegistry, Commands
-from aider.user_commands import CommandLoader, CommandLoadError
+import git
+import pyperclip
+from io import StringIO
 
-# Basic command tests
+from aider.commands import UserCommand, UserCommandRegistry, Commands, SwitchCoder
+from aider.user_commands import CommandLoader, CommandLoadError
+from aider.io import InputOutput
+from aider.models import Model
+from aider.utils import ChdirTemporaryDirectory, GitTemporaryDirectory, make_repo
+
+# Test fixtures
 
 
 def test_user_command_creation():
@@ -232,6 +240,20 @@ def test_command_registry_lifecycle():
     
     # Test dropping non-existent
     assert not registry.drop_commands("nonexistent")
+
+@pytest.fixture
+def gpt35():
+    return Model("gpt-3.5-turbo")
+
+@pytest.fixture
+def io():
+    return InputOutput(pretty=False, fancy_input=False, yes=True)
+
+@pytest.fixture
+def commands(io, gpt35):
+    from aider.coders import Coder
+    coder = Coder.create(gpt35, None, io)
+    return Commands(io, coder)
 
 def test_command_types():
     """Test different command types"""
