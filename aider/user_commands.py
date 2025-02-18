@@ -8,6 +8,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+class CommandLoadError(Exception):
+    """Raised when there is an error loading commands."""
+    pass
+
 @contextmanager
 def error_handler(io, error_prefix):
     try:
@@ -163,8 +167,7 @@ class CommandLoader:
             logger.debug(f"Loaded YAML from {path}: {config}")
             return config
         except yaml.YAMLError as e:
-            logger.warning(f'Failed to parse YAML from {path}: {e}')
-            return {}
+            raise CommandLoadError(f'Failed to parse YAML from {path}: {e}')
         except Exception as e:
             logger.warning(f'Error reading file {path}: {e}')
             return {}

@@ -3,7 +3,7 @@ from pathlib import Path
 import tempfile
 import yaml
 
-from aider.user_commands import CommandLoader, UserCommand, UserCommandRegistry
+from aider.user_commands import CommandLoader, UserCommand, UserCommandRegistry, CommandLoadError
 
 def test_empty_config():
     """Test that aider starts up without a commands file"""
@@ -21,7 +21,7 @@ def test_invalid_yaml():
         f.write("invalid: yaml: :")
         f.flush()
         loader = CommandLoader([f.name])
-        with pytest.raises(Exception):
+        with pytest.raises(CommandLoadError):
             loader.load_commands()
 
 def test_load_commands_from_file():
