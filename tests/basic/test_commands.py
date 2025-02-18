@@ -183,6 +183,10 @@ commands:
             # Test listing commands
             with mock.patch.object(io, "tool_output") as mock_output:
                 commands.cmd_cmd("list")
+                # Debug: print all calls to tool_output
+                print("\nActual calls to tool_output:")
+                for call in mock_output.call_args_list:
+                    print(f"  {call}")
                 mock_output.assert_any_call(f"\nCommands from {cmd_file.name}:")
                 mock_output.assert_any_call("  test                 : Test command")
                 mock_output.assert_any_call("  hello                : Greeting command")
