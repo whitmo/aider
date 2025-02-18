@@ -359,6 +359,10 @@ def temp_yaml_file(tmp_path):
     return _create_yaml
 
 @pytest.fixture
+def command_loader():
+    return CommandLoader([])
+
+@pytest.fixture
 def gpt35():
     return Model("gpt-3.5-turbo")
 
