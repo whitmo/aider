@@ -21,7 +21,26 @@ def test_invalid_yaml():
         f.write("invalid: yaml: :")
         f.flush()
         loader = CommandLoader([f.name])
-        assert loader.load_commands() == {}
+        with pytest.raises(Exception):
+            loader.load_commands()
+
+def test_load_commands_from_file():
+    """Test loading commands from a single file"""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml') as f:
+        yaml.dump({
+            "commands": {
+                "test": {
+                    "help": "Test command",
+                    "definition": "echo test"
+                }
+            }
+        }, f)
+        f.flush()
+        
+        loader = CommandLoader([])
+        commands = loader.load_commands_from_file(f.name)
+        assert len(commands) == 1
+        assert "test" in commands
 
 def test_command_registry_lifecycle():
     """Test the full lifecycle of commands in the registry"""
