@@ -7,6 +7,7 @@ import tempfile
 from collections import OrderedDict
 from os.path import expanduser
 from pathlib import Path
+from typing import Dict, Set
 
 from aider.user_commands import UserCommand, CommandLoader
 
