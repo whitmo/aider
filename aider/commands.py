@@ -1566,10 +1566,6 @@ class UserCommandRegistry:
         print("self.commands:", self.commands)
         print("self.sources:", self.sources)
 
-        if not self.commands and not self.sources:
-            io.tool_output("No commands registered")
-            return
-
         by_source = {}
         for source, names in self.sources.items():
             cmds = []
@@ -1581,6 +1577,10 @@ class UserCommandRegistry:
                 by_source[source] = cmds
 
         print("by_source:", by_source)
+
+        if not by_source:
+            io.tool_output("No commands registered")
+            return
 
         for source, cmds in sorted(by_source.items()):
             source_display = source if source == "<config>" else Path(source).name
