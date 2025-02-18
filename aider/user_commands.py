@@ -117,27 +117,27 @@ class CommandLoader:
         if not Path(path).exists():
             return {}
         
-        try:
-            with open(path) as f:
+        with open(path) as f:
+            try:
                 config = yaml.safe_load(f)
-                if config is None:
-                    return {}
-                    
-                if "commands" in config:
-                    user_commands = config["commands"]
-                else:
-                    user_commands = config
-                    
-                if not user_commands:
-                    return {}
-                    
-                return {
-                    name: self._create_command(name, cmd_def)
-                    for name, cmd_def in user_commands.items()
-                }
-        except yaml.YAMLError:
-            # Only catch YAML parsing errors specifically
-            return {}
+            except yaml.YAMLError:
+                return {}
+
+            if config is None:
+                return {}
+            
+            if "commands" in config:
+                user_commands = config["commands"]
+            else:
+                user_commands = config
+            
+            if not user_commands:
+                return {}
+            
+            return {
+                name: self._create_command(name, cmd_def)
+                for name, cmd_def in user_commands.items()
+            }
 
     def _create_command(self, name: str, definition) -> UserCommand:
         if isinstance(definition, str):
