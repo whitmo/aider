@@ -114,7 +114,7 @@ class CommandLoader:
         """Load commands from all config paths."""
         all_commands = {}
         errors = []
-        
+
         for path in self.config_paths:
             try:
                 new_commands = self.load_commands_from_file(path)
@@ -126,11 +126,11 @@ class CommandLoader:
                 msg = f"Failed to load commands from {path}: {e}"
                 logger.error(msg)
                 errors.append(msg)
-        
+
         if errors and not all_commands:
             # Only raise if we got no commands at all
             raise Exception("\n".join(errors))
-        
+
         logger.debug(f"Final commands loaded: {sorted(all_commands.keys())}")
         return all_commands
 
@@ -140,11 +140,11 @@ class CommandLoader:
         if not yaml_content:
             logger.debug(f"No commands found in {path}")
             return {}
-            
+
         logger.debug(f"Loaded YAML from {path}: {yaml_content}")
         new_commands = self._parse_commands(yaml_content)
         logger.debug(f"Parsed {len(new_commands)} commands from {path}")
-        
+
         return new_commands
 
     def _read_yaml(self, path) -> dict:
@@ -160,7 +160,8 @@ class CommandLoader:
             lines = content.splitlines()
             if not lines:
                 return {}
-                
+
+            # @@ we should be able to expect decent yaml
             # Find minimum indentation (excluding empty lines)
             indents = [len(line) - len(line.lstrip()) for line in lines if line.strip()]
             if indents:
@@ -168,7 +169,7 @@ class CommandLoader:
                 # Remove common leading whitespace
                 lines = [line[min_indent:] if line.strip() else line for line in lines]
                 content = '\n'.join(lines)
-            
+
             config = yaml.safe_load(content)
             if config is None:
                 logger.debug(f"Empty YAML file: {path}")
@@ -186,7 +187,7 @@ class CommandLoader:
         """Parse commands from YAML config."""
         # Handle both top-level commands and direct command definitions
         user_commands = config.get("commands", config)
-        
+
         if not isinstance(user_commands, dict):
             logger.warning(f"Invalid commands format, expected dict but got: {type(user_commands)}")
             return {}
