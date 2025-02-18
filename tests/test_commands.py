@@ -100,14 +100,26 @@ def command_loader():
         "type": "plugin"
     }),
 ])
-def test_command_loading(temp_yaml_file, command_loader, yaml_content: str, expected: Dict[str, Any]):
+def test_command_loading(temp_yaml_file, command_loader, yaml_content: str, expected: Dict[str, Any], caplog):
     """Test command loading with various YAML formats."""
+    caplog.set_level("DEBUG")
+    
     yaml_file = temp_yaml_file(yaml_content)
     loader = CommandLoader([str(yaml_file)])
+    
+    # First check the YAML parsing
+    yaml_data = loader._read_yaml(str(yaml_file))
+    assert yaml_data, f"Failed to parse YAML content:\n{yaml_content}"
+    
+    # Then check command parsing
+    parsed_commands = loader._parse_commands(yaml_data)
+    assert parsed_commands, f"Failed to parse commands from YAML:\n{yaml_data}"
+    
+    # Finally check the full loading
     commands = loader.load_commands()
     
     name = expected["name"]
-    assert name in commands, f"Command {name} not found in loaded commands"
+    assert name in commands, f"Command {name} not found in loaded commands. Debug logs:\n{caplog.text}"
     cmd = commands[name]
     
     assert cmd.name == name

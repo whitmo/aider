@@ -111,42 +111,56 @@ class CommandLoader:
         self.config_paths = config_paths
 
     def load_commands(self) -> dict:
+        """Load commands from all config paths."""
         commands = {}
         for path in self.config_paths:
-            commands.update(self._load_from_file(path))
+            try:
+                yaml_content = self._read_yaml(path)
+                if yaml_content:
+                    logger.debug(f"Loaded YAML from {path}: {yaml_content}")
+                    new_commands = self._parse_commands(yaml_content)
+                    logger.debug(f"Parsed commands from {path}: {new_commands}")
+                    commands.update(new_commands)
+            except Exception as e:
+                logger.error(f"Failed to load commands from {path}: {e}")
         return commands
 
-    def _load_from_file(self, path) -> dict:
+    def _read_yaml(self, path) -> dict:
+        """Read and parse YAML from a file."""
         path = str(Path(path).expanduser())
         if not Path(path).exists():
+            logger.debug(f"File not found: {path}")
             return {}
 
         try:
             with open(path, encoding='utf-8') as f:
                 config = yaml.safe_load(f)
+                if config is None:
+                    logger.debug(f"Empty YAML file: {path}")
+                    return {}
+                return config
         except yaml.YAMLError as e:
-            logger.warning(f'Failed to load {path}: {e}')
+            logger.warning(f'Failed to parse YAML from {path}: {e}')
             return {}
         except Exception as e:
-            logger.warning(f'Error reading {path}: {e}')
+            logger.warning(f'Error reading file {path}: {e}')
             return {}
 
-        if config is None:
-            return {}
-
+    def _parse_commands(self, config: dict) -> dict:
+        """Parse commands from YAML config."""
         # Handle both top-level commands and direct command definitions
-        if "commands" in config:
-            user_commands = config["commands"]
-        else:
-            user_commands = config
-
+        user_commands = config.get("commands", config)
+        
         if not isinstance(user_commands, dict):
+            logger.warning(f"Invalid commands format, expected dict but got: {type(user_commands)}")
             return {}
 
         commands = {}
         for name, cmd_def in user_commands.items():
             try:
-                commands[name] = self._create_command(name, cmd_def)
+                cmd = self._create_command(name, cmd_def)
+                logger.debug(f"Created command {name}: {cmd}")
+                commands[name] = cmd
             except (KeyError, ValueError) as e:
                 logger.warning(f'Failed to create command {name}: {e}')
                 continue
