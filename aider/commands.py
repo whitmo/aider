@@ -1562,10 +1562,7 @@ class UserCommandRegistry:
         return False
 
     def list_commands(self, io):
-        print("\nDEBUG State:")
-        print("self.commands:", self.commands)
-        print("self.sources:", self.sources)
-
+        """List all registered commands grouped by their source files."""
         by_source = {}
         for source, names in self.sources.items():
             cmds = []
@@ -1576,18 +1573,23 @@ class UserCommandRegistry:
             if cmds:
                 by_source[source] = cmds
 
-        print("by_source:", by_source)
-
         if not by_source:
             io.tool_output("No commands registered")
             return
+
+        # Find the longest command name for proper padding
+        max_name_len = max(
+            (len(name) for cmds in by_source.values() for name, _ in cmds),
+            default=20
+        )
+        pad = max_name_len + 2  # Add some extra spacing
 
         for source, cmds in sorted(by_source.items()):
             source_display = source if source == "<config>" else Path(source).name
             io.tool_output(f"\nCommands from {source_display}:")
             for name, cmd in sorted(cmds):
                 desc = cmd.description or "No description"
-                io.tool_output(f"  {name:20} : {desc}")
+                io.tool_output(f"  {name:<{pad}} : {desc}")
 
 
 def expand_subdir(file_path):

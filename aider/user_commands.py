@@ -146,16 +146,20 @@ class CommandLoader:
 
     def load_commands_from_file(self, path) -> dict:
         """Load commands from a single file."""
-        yaml_content = self._read_yaml(path)
-        if not yaml_content:
-            logger.debug(f"No commands found in {path}")
-            return {}
+        try:
+            yaml_content = self._read_yaml(path)
+            if not yaml_content:
+                logger.debug(f"No commands found in {path}")
+                return {}
 
-        logger.debug(f"Loaded YAML from {path}: {yaml_content}")
-        new_commands = self._parse_commands(yaml_content)
-        logger.debug(f"Parsed {len(new_commands)} commands from {path}")
+            logger.debug(f"Loaded YAML from {path}: {yaml_content}")
+            new_commands = self._parse_commands(yaml_content)
+            logger.debug(f"Parsed {len(new_commands)} commands from {path}")
 
-        return new_commands
+            return new_commands
+        except Exception as e:
+            logger.error(f"Failed to load commands from {path}: {e}")
+            raise CommandLoadError(f"Failed to load commands from {path}: {e}")
 
     def _read_yaml(self, path) -> dict:
         """Read and parse YAML from a file."""
