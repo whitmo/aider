@@ -116,17 +116,21 @@ class CommandLoader:
         for path in self.config_paths:
             try:
                 yaml_content = self._read_yaml(path)
-                if yaml_content:
-                    logger.debug(f"Loaded YAML from {path}: {yaml_content}")
-                    new_commands = self._parse_commands(yaml_content)
-                    logger.debug(f"Parsed commands from {path}: {new_commands}")
-                    # Merge new commands, preserving existing ones
-                    for name, cmd in new_commands.items():
-                        if name not in all_commands:
-                            all_commands[name] = cmd
-                    logger.debug(f"Updated commands dict, now contains: {list(all_commands.keys())}")
+                if not yaml_content:
+                    logger.debug(f"No commands found in {path}")
+                    continue
+                    
+                logger.debug(f"Loaded YAML from {path}: {yaml_content}")
+                new_commands = self._parse_commands(yaml_content)
+                logger.debug(f"Parsed {len(new_commands)} commands from {path}")
+                
+                # Update all_commands with new commands
+                all_commands.update(new_commands)
+                logger.debug(f"Command dict now contains: {sorted(all_commands.keys())}")
             except Exception as e:
                 logger.error(f"Failed to load commands from {path}: {e}")
+                
+        logger.debug(f"Final command dict contains {len(all_commands)} commands: {sorted(all_commands.keys())}")
         return all_commands
 
     def _read_yaml(self, path) -> dict:
