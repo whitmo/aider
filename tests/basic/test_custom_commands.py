@@ -6,6 +6,7 @@ import yaml
 from unittest.mock import Mock, patch
 
 from aider.commands import UserCommand, UserCommandRegistry, Commands
+from aider.user_commands import CommandLoader, CommandLoadError
 
 
 def test_user_command_creation():
