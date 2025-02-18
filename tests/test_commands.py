@@ -1,6 +1,7 @@
 import pytest
 from pathlib import Path
 import tempfile
+import textwrap
 import yaml
 from typing import Dict, Any
 
@@ -151,19 +152,19 @@ def test_command_loading_errors(command_loader, temp_yaml_file):
 
 def test_multiple_command_files(temp_yaml_file):
     """Test loading commands from multiple files."""
-    file1 = temp_yaml_file("""
-commands:
-  cmd1:
-    help: "Command 1"
-    definition: echo cmd1
-""")
+    file1 = temp_yaml_file(textwrap.dedent("""
+        commands:
+          cmd1:
+            help: "Command 1"
+            definition: echo cmd1
+        """))
 
-    file2 = temp_yaml_file("""
-commands:
-  cmd2:
-    help: "Command 2"
-    definition: echo cmd2
-""", "commands2.yaml")
+    file2 = temp_yaml_file(textwrap.dedent("""
+        commands:
+          cmd2:
+            help: "Command 2"
+            definition: echo cmd2
+        """), "commands2.yaml")
     
     loader = CommandLoader([str(file1), str(file2)])
     commands = loader.load_commands()

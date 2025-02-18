@@ -156,20 +156,6 @@ class CommandLoader:
 
         try:
             content = path.read_text(encoding='utf-8')
-            # Preserve indentation but strip any common leading whitespace
-            lines = content.splitlines()
-            if not lines:
-                return {}
-
-            # @@ we should be able to expect decent yaml
-            # Find minimum indentation (excluding empty lines)
-            indents = [len(line) - len(line.lstrip()) for line in lines if line.strip()]
-            if indents:
-                min_indent = min(indents)
-                # Remove common leading whitespace
-                lines = [line[min_indent:] if line.strip() else line for line in lines]
-                content = '\n'.join(lines)
-
             config = yaml.safe_load(content)
             if config is None:
                 logger.debug(f"Empty YAML file: {path}")
