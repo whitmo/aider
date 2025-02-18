@@ -1562,6 +1562,10 @@ class UserCommandRegistry:
         return False
 
     def list_commands(self, io):
+        print("\nDEBUG State:")
+        print("self.commands:", self.commands)
+        print("self.sources:", self.sources)
+
         if not self.commands and not self.sources:
             io.tool_output("No commands registered")
             return
@@ -1575,6 +1579,8 @@ class UserCommandRegistry:
                     cmds.append((name, cmd))
             if cmds:
                 by_source[source] = cmds
+
+        print("by_source:", by_source)
 
         for source, cmds in sorted(by_source.items()):
             source_display = source if source == "<config>" else Path(source).name
