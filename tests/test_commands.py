@@ -114,6 +114,20 @@ def test_command_loading(temp_yaml_file, command_loader, yaml_content: str, expe
     assert cmd.definition == expected["definition"]
     assert cmd.description == expected["help_text"]
     assert cmd.command_type == expected["type"]
+def test_command_loading(temp_yaml_file, command_loader, yaml_content: str, expected: Dict[str, Any]):
+    """Test command loading with various YAML formats."""
+    yaml_file = temp_yaml_file(yaml_content)
+    loader = CommandLoader([str(yaml_file)])
+    commands = loader.load_commands()
+    
+    name = expected["name"]
+    assert name in commands, f"Command {name} not found in loaded commands"
+    cmd = commands[name]
+    
+    assert cmd.name == name
+    assert cmd.definition == expected["definition"]
+    assert cmd.description == expected["help_text"]
+    assert cmd.command_type == expected["type"]
 
 def test_command_loading_errors(command_loader, temp_yaml_file):
     """Test error cases in command loading."""
