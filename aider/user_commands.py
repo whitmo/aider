@@ -120,7 +120,10 @@ class CommandLoader:
                     logger.debug(f"Loaded YAML from {path}: {yaml_content}")
                     new_commands = self._parse_commands(yaml_content)
                     logger.debug(f"Parsed commands from {path}: {new_commands}")
-                    all_commands.update(new_commands)
+                    # Merge new commands, preserving existing ones
+                    for name, cmd in new_commands.items():
+                        if name not in all_commands:
+                            all_commands[name] = cmd
                     logger.debug(f"Updated commands dict, now contains: {list(all_commands.keys())}")
             except Exception as e:
                 logger.error(f"Failed to load commands from {path}: {e}")
