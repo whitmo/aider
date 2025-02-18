@@ -135,7 +135,8 @@ class CommandLoader:
                     name: self._create_command(name, cmd_def)
                     for name, cmd_def in user_commands.items()
                 }
-        except (yaml.YAMLError, Exception):
+        except yaml.YAMLError:
+            # Only catch YAML parsing errors specifically
             return {}
 
     def _create_command(self, name: str, definition) -> UserCommand:
