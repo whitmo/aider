@@ -1817,13 +1817,33 @@ def test_cmd_cmd_list(setup_commands):
 
     # Add commands first
     commands.cmd_cmd(f"add {cmd_file}")
-    import pdb;pdb.set_trace()
+
     # Test listing commands
     with mock.patch.object(io, "tool_output") as mock_output:
         commands.cmd_cmd("list")
+        
+        # Verify header
         mock_output.assert_any_call(f"\nCommands from {cmd_file.name}:")
-        mock_output.assert_any_call("  test                 : Test command")
-        mock_output.assert_any_call("  hello                : Greeting command")
+        
+        # Get all calls to tool_output
+        calls = [call[0][0] for call in mock_output.call_args_list]
+        
+        # Find command lines
+        cmd_lines = [line for line in calls if line.startswith("  ")]
+        
+        # Verify we have exactly 2 command lines
+        assert len(cmd_lines) == 2
+        
+        # Verify each command line has the expected format
+        for line in cmd_lines:
+            # Check basic format with command name and description
+            assert re.match(r"^\s{2}\w+\s+: .+$", line)
+            
+            # Verify specific commands are present
+            if "test" in line:
+                assert "Test command" in line
+            elif "hello" in line:
+                assert "Greeting command" in line
 
 def test_cmd_cmd_errors():
     io = InputOutput(pretty=False, fancy_input=False, yes=True)

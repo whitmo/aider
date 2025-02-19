@@ -1589,7 +1589,7 @@ class UserCommandRegistry:
             io.tool_output(f"\nCommands from {source_display}:")
             for name, cmd in sorted(cmds):
                 desc = cmd.description or "No description"
-                io.tool_output(f"  {name:<{pad}} : {desc}")
+                io.tool_output(f"  {name:{pad}}: {desc}")
 
 
 def expand_subdir(file_path):
