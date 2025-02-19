@@ -9,6 +9,9 @@ from typing import Generator, Tuple
 from io import StringIO
 from pathlib import Path
 
+from aider.commands import Commands
+from aider.io import InputOutput
+
 @pytest.fixture
 def cmd_file_content() -> str:
     return """
