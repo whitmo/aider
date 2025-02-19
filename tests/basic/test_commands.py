@@ -153,7 +153,7 @@ class TestCommands(TestCase):
 
             # Create a test commands file
             cmd_file = Path(repo_dir) / "test_commands.yaml"
-            # @@: use textwrap.dedent
+            #@@: use textwrap.dedent
             cmd_file.write_text("""
 commands:
   test:
