@@ -36,6 +36,26 @@ Or lists can be specified using commas and square brackets:
 read: [CONVENTIONS.md, anotherfile.txt, thirdfile.py]
 ```
 
+## User Commands
+
+You can define custom commands in your `.aider.conf.yml` file under the `commands` section:
+
+```yaml
+commands:
+  test:
+    type: shell
+    definition: "echo {args}"
+    description: "Test command"
+  
+  format:
+    type: plugin
+    definition: "my_plugins.format:format_command" 
+    description: "Format code"
+
+  # Simple shell alias
+  status: "git status"
+```
+
 ## Sample YAML config file
 
 Below is a sample of the YAML config file, which you
