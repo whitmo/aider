@@ -12,32 +12,9 @@ from pathlib import Path
 from aider.commands import Commands
 from aider.io import InputOutput
 
-@pytest.fixture
-def cmd_file_content() -> str:
-    return """
-commands:
-  test:
-    type: shell
-    definition: "echo test"
-    description: "Test command"
-  hello:
-    type: shell
-    definition: "echo 'Hello {args}'"
-    description: "Greeting command"
-"""
 
-@pytest.fixture
-def setup_commands(cmd_file_content: str) -> Generator[Tuple[Commands, InputOutput, Path], None, None]:
-    with GitTemporaryDirectory() as repo_dir:
-        io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        coder = Coder.create(Model("gpt-3.5-turbo"), None, io)
-        commands = Commands(io, coder)
-        
-        # Create a test commands file
-        cmd_file = Path(repo_dir) / "test_commands.yaml"
-        cmd_file.write_text(cmd_file_content)
-        
-        yield commands, io, cmd_file
+
+
 from pathlib import Path
 from unittest import TestCase, mock
 
@@ -177,63 +154,6 @@ class TestCommands(TestCase):
 
             # Assert that tool_error was called with the clipboard error message
             mock_tool_error.assert_called_once_with("Failed to copy to clipboard: Clipboard error")
-
-
-    def test_cmd_cmd_add(self, setup_commands):
-        commands, io, cmd_file = setup_commands
-        
-        # Test adding commands
-        commands.cmd_cmd(f"add {cmd_file}")
-        assert "test" in commands.user_commands.commands
-        assert "hello" in commands.user_commands.commands
-
-    def test_cmd_cmd_drop(self, setup_commands):
-        commands, io, cmd_file = setup_commands
-        
-        # Add commands first
-        commands.cmd_cmd(f"add {cmd_file}")
-        
-        # Test dropping single command
-        commands.cmd_cmd("drop test")
-        assert "test" not in commands.user_commands.commands
-        assert "hello" in commands.user_commands.commands
-
-        # Test dropping by file
-        commands.cmd_cmd(f"drop {cmd_file}")
-        assert "hello" not in commands.user_commands.commands
-
-    def test_cmd_cmd_list(self, setup_commands):
-        commands, io, cmd_file = setup_commands
-        
-        # Add commands first
-        commands.cmd_cmd(f"add {cmd_file}")
-        
-        # Test listing commands
-        with mock.patch.object(io, "tool_output") as mock_output:
-            commands.cmd_cmd("list")
-            mock_output.assert_any_call(f"\nCommands from {cmd_file.name}:")
-            mock_output.assert_any_call("  test                 : Test command")
-            mock_output.assert_any_call("  hello                : Greeting command")
-
-
-
-    def test_cmd_cmd_errors(self):
-        io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        coder = Coder.create(Model("gpt-3.5-turbo"), None, io)
-        commands = Commands(io, coder)
-
-        with mock.patch.object(io, "tool_error") as mock_error:
-            # Test invalid subcommand
-            commands.cmd_cmd("invalid")
-            mock_error.assert_called_with("Unknown subcommand: invalid")
-
-            # Test missing file
-            commands.cmd_cmd("add nonexistent.yaml")
-            mock_error.assert_called_with(mock.ANY)  # Error message will vary by OS
-
-            # Test invalid command name
-            commands.cmd_cmd("drop nonexistent")
-            mock_error.assert_called_with("No commands found for: nonexistent")
 
     def test_cmd_add_bad_glob(self):
         # https://github.com/Aider-AI/aider/issues/293
@@ -1841,3 +1761,84 @@ class TestCommands(TestCase):
                     mock_tool_error.assert_any_call(
                         "Command '/model gpt-4' is only supported in interactive mode, skipping."
                     )
+
+@pytest.fixture
+def setup_commands(cmd_file_content: str) -> Generator[Tuple[Commands, InputOutput, Path], None, None]:
+    with GitTemporaryDirectory() as repo_dir:
+        io = InputOutput(pretty=False, fancy_input=False, yes=True)
+        coder = Coder.create(Model("gpt-3.5-turbo"), None, io)
+        commands = Commands(io, coder)
+
+        # Create a test commands file
+        cmd_file = Path(repo_dir) / "test_commands.yaml"
+        cmd_file.write_text(cmd_file_content)
+
+        yield commands, io, cmd_file
+
+@pytest.fixture
+def cmd_file_content() -> str:
+    return """
+commands:
+  test:
+    type: shell
+    definition: "echo test"
+    description: "Test command"
+  hello:
+    type: shell
+    definition: "echo 'Hello {args}'"
+    description: "Greeting command"
+"""
+
+def test_cmd_cmd_add(setup_commands):
+    commands, io, cmd_file = setup_commands
+
+    # Test adding commands
+    commands.cmd_cmd(f"add {cmd_file}")
+    assert "test" in commands.user_commands.commands
+    assert "hello" in commands.user_commands.commands
+
+def test_cmd_cmd_drop(setup_commands):
+    commands, io, cmd_file = setup_commands
+
+    # Add commands first
+    commands.cmd_cmd(f"add {cmd_file}")
+
+    # Test dropping single command
+    commands.cmd_cmd("drop test")
+    assert "test" not in commands.user_commands.commands
+    assert "hello" in commands.user_commands.commands
+
+    # Test dropping by file
+    commands.cmd_cmd(f"drop {cmd_file}")
+    assert "hello" not in commands.user_commands.commands
+
+def test_cmd_cmd_list(setup_commands):
+    commands, io, cmd_file = setup_commands
+
+    # Add commands first
+    commands.cmd_cmd(f"add {cmd_file}")
+    import pdb;pdb.set_trace()
+    # Test listing commands
+    with mock.patch.object(io, "tool_output") as mock_output:
+        commands.cmd_cmd("list")
+        mock_output.assert_any_call(f"\nCommands from {cmd_file.name}:")
+        mock_output.assert_any_call("  test                 : Test command")
+        mock_output.assert_any_call("  hello                : Greeting command")
+
+def test_cmd_cmd_errors():
+    io = InputOutput(pretty=False, fancy_input=False, yes=True)
+    coder = Coder.create(Model("gpt-3.5-turbo"), None, io)
+    commands = Commands(io, coder)
+
+    with mock.patch.object(io, "tool_error") as mock_error:
+        # Test invalid subcommand
+        commands.cmd_cmd("invalid")
+        mock_error.assert_called_with("Unknown subcommand: invalid")
+
+        # Test missing file
+        commands.cmd_cmd("add nonexistent.yaml")
+        mock_error.assert_called_with(mock.ANY)  # Error message will vary by OS
+
+        # Test invalid command name
+        commands.cmd_cmd("drop nonexistent")
+        mock_error.assert_called_with("No commands found for: nonexistent")
