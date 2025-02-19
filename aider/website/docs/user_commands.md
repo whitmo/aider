@@ -18,7 +18,7 @@ commands:
 ```yaml
 commands:
   hello:
-    type: plugin 
+    type: plugin
     definition: mypackage#hello
 ```
 And in your package's pyproject.toml:
@@ -27,7 +27,7 @@ And in your package's pyproject.toml:
 hello = "mypackage.commands:hello_command"
 ```
 
-3. Direct YAML File:
+3. Direct YAML File (not implemented yet):
 ```bash
 $ aider --commands /path/to/commands.yaml
 ```
@@ -38,7 +38,7 @@ Or within aider:
 
 ## Command Basics
 
-Let's look at how commands work:
+How commands work:
 
 ```python
 # Create a basic Commands instance for testing
@@ -108,7 +108,7 @@ Override commands modify existing command behavior:
 
 Override functions receive:
 - commands: The Commands instance
-- original_func: The original command function  
+- original_func: The original command function
 - args: Command arguments
 
 Example override:
@@ -130,7 +130,7 @@ commands:
     type: shell
     definition: "date"
     description: "Show current date/time"
-    
+
   greet:
     type: plugin
     definition: mypackage.greetings.say_hello
@@ -140,7 +140,7 @@ commands:
 Loading commands:
 ```python
 >>> from aider.commands import CommandLoader
->>> loader = CommandLoader(["/path/to/config.yml"]) 
+>>> loader = CommandLoader(["/path/to/config.yml"])
 >>> registry = loader.load_commands()
 >>> len(registry) >= 0  # Will vary based on config
 True

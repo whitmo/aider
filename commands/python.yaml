@@ -1,14 +1,21 @@
-# no step on snek
-
 commands:
-  uv:
+  uv2:
     help: |
       Use uv (formerly known as upv) to install Python packages.
       A fast, reliable Python package installer and resolver, written in Rust.
-      
+
       Examples:
         uv install requests
         uv pip install -r requirements.txt
         uv pip freeze > requirements.txt
-    
+
     definition: uv {args}
+  pytest:
+    help: |
+      Run pytest tests.
+
+      Examples:
+        /pytest
+        /pytest tests/test.py
+
+    definition: uv run pytest {args}

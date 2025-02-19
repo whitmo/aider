@@ -823,6 +823,19 @@ def get_parser(default_config_files, git_root):
         "--editor",
         help="Specify which editor to use for the /editor command",
     )
+    # @@ code smell
+    group.add_argument(
+        "--commands",
+        default=[],
+        action="append",
+        help="Command definitions",
+    )
+    group.add_argument(
+        "--cmd-file",
+        default=[],
+        action="append",
+        help="Specify a file from which to load commands. Maybe used multiple times",
+    )
 
     return parser
 

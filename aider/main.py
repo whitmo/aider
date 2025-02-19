@@ -845,10 +845,6 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     else:
         analytics.event("no-repo")
 
-    # Load user commands from config files
-    config_files = generate_search_path_list(".aider.conf.yml", git_root, args.config)
-
-
     commands = Commands(
         io,
         None,
@@ -861,6 +857,11 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         verbose=args.verbose,
         editor=args.editor,
     )
+
+    # Load user commands from config files
+    config_files = generate_search_path_list(".aider.conf.yml", git_root, args.config)
+    if args.cmd_file:
+        config_files.extend(args.cmd_file)
 
     commands.user_commands.load_from_config(config_files)
 
