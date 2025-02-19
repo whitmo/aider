@@ -5,7 +5,36 @@ import shutil
 import sys
 import tempfile
 import pytest
+from typing import Generator, Tuple
 from io import StringIO
+from pathlib import Path
+
+@pytest.fixture
+def cmd_file_content() -> str:
+    return """
+commands:
+  test:
+    type: shell
+    definition: "echo test"
+    description: "Test command"
+  hello:
+    type: shell
+    definition: "echo 'Hello {args}'"
+    description: "Greeting command"
+"""
+
+@pytest.fixture
+def setup_commands(cmd_file_content: str) -> Generator[Tuple[Commands, InputOutput, Path], None, None]:
+    with GitTemporaryDirectory() as repo_dir:
+        io = InputOutput(pretty=False, fancy_input=False, yes=True)
+        coder = Coder.create(Model("gpt-3.5-turbo"), None, io)
+        commands = Commands(io, coder)
+        
+        # Create a test commands file
+        cmd_file = Path(repo_dir) / "test_commands.yaml"
+        cmd_file.write_text(cmd_file_content)
+        
+        yield commands, io, cmd_file
 from pathlib import Path
 from unittest import TestCase, mock
 
@@ -146,32 +175,6 @@ class TestCommands(TestCase):
             # Assert that tool_error was called with the clipboard error message
             mock_tool_error.assert_called_once_with("Failed to copy to clipboard: Clipboard error")
 
-    @pytest.fixture
-    def cmd_file_content(self):
-        return """
-commands:
-  test:
-    type: shell
-    definition: "echo test"
-    description: "Test command"
-  hello:
-    type: shell
-    definition: "echo 'Hello {args}'"
-    description: "Greeting command"
-"""
-
-    @pytest.fixture
-    def setup_commands(self, cmd_file_content):
-        with GitTemporaryDirectory() as repo_dir:
-            io = InputOutput(pretty=False, fancy_input=False, yes=True)
-            coder = Coder.create(Model("gpt-3.5-turbo"), None, io)
-            commands = Commands(io, coder)
-            
-            # Create a test commands file
-            cmd_file = Path(repo_dir) / "test_commands.yaml"
-            cmd_file.write_text(cmd_file_content)
-            
-            yield commands, io, cmd_file
 
     def test_cmd_cmd_add(self, setup_commands):
         commands, io, cmd_file = setup_commands
