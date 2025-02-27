@@ -140,9 +140,8 @@ commands:
 Loading commands:
 ```python
 >>> from aider.commands import CommandLoader
->>> loader = CommandLoader(["/path/to/config.yml"])
->>> registry = loader.load_commands()
->>> len(registry) >= 0  # Will vary based on config
+>>> commands = CommandLoader.load_from(["/path/to/config.yml"])
+>>> len(commands) >= 0  # Will vary based on config
 True
 
 ## Error Handling
