@@ -342,6 +342,7 @@ def main(
     LONG_TIMEOUT = 24 * 60 * 60
     sendchat.RETRY_TIMEOUT = LONG_TIMEOUT
     base_coder.RETRY_TIMEOUT = LONG_TIMEOUT
+    models.RETRY_TIMEOUT = LONG_TIMEOUT
 
     if threads == 1:
         all_results = []
@@ -964,9 +965,10 @@ def run_unit_tests(original_dname, testdir, history_fname, test_files):
 
     # Copy test files from original directory
     for file_path in test_files:
-        src = original_dname / testdir.name / file_path
+        src = original_dname / Path(*testdir.parts[-4:]) / file_path
         dst = testdir / file_path
         if src.exists():
+            print("copying", src, dst)
             os.makedirs(dst.parent, exist_ok=True)
             shutil.copy(src, dst)
 
@@ -988,6 +990,8 @@ def run_unit_tests(original_dname, testdir, history_fname, test_files):
         text=True,
         timeout=timeout,
         cwd=testdir,
+        encoding="utf-8",
+        errors="replace",
     )
 
     success = result.returncode == 0

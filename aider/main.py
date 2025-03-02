@@ -214,6 +214,18 @@ def check_streamlit_install(io):
     )
 
 
+def install_tree_sitter_language_pack(io):
+    return utils.check_pip_install_extra(
+        io,
+        "tree_sitter_language_pack",
+        "Install tree_sitter_language_pack?",
+        [
+            "tree-sitter-language-pack==0.4.0",
+            "tree-sitter==0.24.0",
+        ],
+    )
+
+
 def write_streamlit_credentials():
     from streamlit.file_util import get_streamlit_file_path
 
@@ -509,8 +521,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         litellm._lazy_module.aclient_session = httpx.AsyncClient(verify=False)
 
     if args.timeout:
-        litellm._load_litellm()
-        litellm._lazy_module.request_timeout = args.timeout
+        models.request_timeout = args.timeout
 
     if args.dark_mode:
         args.user_input_color = "#32FF32"
@@ -705,6 +716,11 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     if args.upgrade:
         success = install_upgrade(io)
         analytics.event("exit", reason="Upgrade completed")
+        return 0 if success else 1
+
+    if args.install_tree_sitter_language_pack:
+        success = install_tree_sitter_language_pack(io)
+        analytics.event("exit", reason="Install TSLP completed")
         return 0 if success else 1
 
     if args.check_update:
@@ -998,6 +1014,9 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
             analytics.event("exit", reason="Failed to read apply content")
             return
         coder.partial_response_content = content
+        # For testing #2879
+        # from aider.coders.base_coder import all_fences
+        # coder.fence = all_fences[1]
         coder.apply_updates()
         analytics.event("exit", reason="Applied updates")
         return
@@ -1065,10 +1084,13 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
 
     while True:
         try:
+            coder.ok_to_warm_cache = bool(args.cache_keepalive_pings)
             coder.run()
             analytics.event("exit", reason="Completed main CLI coder.run")
             return
         except SwitchCoder as switch:
+            coder.ok_to_warm_cache = False
+
             kwargs = dict(io=io, from_coder=coder)
             kwargs.update(switch.kwargs)
             if "show_announcements" in kwargs:

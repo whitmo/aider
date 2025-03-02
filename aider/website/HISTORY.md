@@ -25,16 +25,58 @@ cog.out(text)
 
 ### main branch
 
+- Added support for Claude 3.7 Sonnet models on OpenRouter, Bedrock and Vertex AI.
+- Aider wrote 47% of the code in this release.
+
+### Aider v0.75.1
+
+- Added support for `openrouter/anthropic/claude-3.7-sonnet`
+
+### Aider v0.75.0
+
+- Basic support for Claude 3.7 Sonnet
+  - Use `--model sonnet` to use the new 3.7
+  - Thinking support coming soon.
+- Bugfix to `/editor` command.
+- Aider wrote 46% of the code in this release.
+
+### Aider v0.74.3
+
+- Downgrade streamlit dependency to avoid threading bug.
+- Added support for tree-sitter language pack.
+- Added openrouter/o3-mini-high model configuration.
+- Added build.gradle.kts to special files for Kotlin project support, by Lucas Shadler.
+
+### Aider v0.74.2
+
+- Prevent more than one cache warming thread from becoming active.
+- Fixed continuation prompt ". " for multiline input.
+- Added HCL (Terraform) syntax support, by Warren Krewenki.
+
+### Aider v0.74.1
+
+- Have o1 & o3-mini generate markdown by sending the magic "Formatting re-enabled." string.
+- Bugfix for multi-line inputs, which should not include the ". " continuation prompt.
+
+### Aider v0.74.0
+
+- Dynamically changes the Ollama context window to hold the current chat.
+- Better support for o3-mini, DeepSeek V3 & R1, o1-mini, o1 especially via third-party API providers.
+- Remove `<think>` tags from R1 responses for commit messages (and other weak model uses).
+- Can now specify `use_temperature: <float>` in model settings, not just true/false.
+- The full docker container now includes `boto3` for Bedrock.
+- Docker containers now set `HOME=/app` which is the normal project mount-point, to persist `~/.aider`.
+- Bugfix to prevent creating incorrect filenames like `python`, `php`, etc.
+- Bugfix for `--timeout`
+- Bugfix so that `/model` now correctly reports that the weak model is not changed.
+- Bugfix so that multi-line mode persists through ^C at confirmation prompts.
+- Watch files now fully ignores top-level directories named in ignore files, to reduce the chance of hitting OS watch limits. Helpful to ignore giant subtrees like `node_modules`.
 - Fast startup with more providers and when model metadata provided in local files.
-- Removes `<think>` tags from R1 responses for commit messages (and other weak model uses).
-- Now dynamically sets `num_ctx` for Ollama, to ensure the context window can hold the chat.
-- Watch files now fully ignores top-level directories, to reduce the chance of hitting OS limits on number of watched files. Helpful to ignore giant subtrees like `node_modules`.
 - Improved .gitignore handling:
   - Honor ignores already in effect regardless of how they've been configured.
   - Check for .env only when the file exists.
-- Added "catch all" model-specific configuration settings for o3-mini, DeepSeek V3 & R1, o1-mini, o1.
-- Added Azure o3-Mini model support.
-- Aider wrote 68% of the code in this release.
+- Yes/No prompts now accept All/Skip as alias for Y/N even when not processing a group of confirmations.
+- Aider wrote 77% of the code in this release.
 
 ### Aider v0.73.0
 
