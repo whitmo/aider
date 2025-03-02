@@ -120,7 +120,35 @@ python3 -m venv ../aider_venv \
 
 ### Running Tests
 
-Just run `pytest`.
+#### Basic Testing
+
+For basic testing, just run `pytest`.
+
+#### Optimized Test Execution
+
+The project includes an optimized test runner that sequences tests so that slower tests run first while faster tests start later. This improves overall test execution time, especially when running tests in parallel.
+
+To use the optimized test runner:
+
+```bash
+# Run all tests with optimized sequencing
+./run_tests.sh
+
+# Run with auto-parallelization (uses CPU count - 1 processes)
+./run_tests.sh --auto-parallel
+
+# Pass any additional pytest arguments
+./run_tests.sh -v --auto-parallel tests/basic/
+```
+
+How it works:
+- The system records test execution times in `.test_execution_times.json`
+- Subsequent test runs use this data to run slow tests first
+- Tests are categorized as "slow" or "fast" based on median execution time
+- The test runner automatically balances test distribution for parallel execution
+- After test completion, statistics about test execution times are displayed
+
+This optimization is implemented as a pytest plugin in `tests/conftest.py`.
 
 ### Building the Docker Image
 
