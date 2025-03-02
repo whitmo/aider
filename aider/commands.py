@@ -7,6 +7,12 @@ import tempfile
 from collections import OrderedDict
 from os.path import expanduser
 from pathlib import Path
+from typing import Dict, Set
+
+from aider.user_commands import UserCommand, CommandLoader
+
+# Public exports
+__all__ = ['Commands']
 
 import pyperclip
 from PIL import Image, ImageGrab
@@ -45,6 +51,7 @@ class Commands:
             parser=self.parser,
             verbose=self.verbose,
             editor=self.editor,
+            ucr=self.user_commands
         )
 
     def __init__(
@@ -59,6 +66,7 @@ class Commands:
         parser=None,
         verbose=False,
         editor=None,
+        ucr=None,
     ):
         self.io = io
         self.coder = coder
@@ -76,6 +84,8 @@ class Commands:
 
         self.help = None
         self.editor = editor
+
+        self.user_commands = ucr or UserCommandRegistry(parent=self)
 
     def cmd_model(self, args):
         "Switch to a new LLM"
@@ -221,10 +231,15 @@ class Commands:
             cmd = attr[4:]
             cmd = cmd.replace("_", "-")
             commands.append("/" + cmd)
-
+        commands.extend(self.user_commands.cmd_names())
         return commands
 
     def do_run(self, cmd_name, args):
+        # First check for user commands
+        if cmd_name in self.user_commands:
+            return self.user_commands.run(self.io, cmd_name, args)
+
+        # Fall back to built-in commands
         cmd_name = cmd_name.replace("-", "_")
         cmd_method_name = f"cmd_{cmd_name}"
         cmd_method = getattr(self, cmd_method_name, None)
@@ -257,6 +272,7 @@ class Commands:
         res = self.matching_commands(inp)
         if res is None:
             return
+
         matching_commands, first_word, rest_inp = res
         if len(matching_commands) == 1:
             command = matching_commands[0][1:]
@@ -1197,6 +1213,50 @@ class Commands:
         except Exception as e:
             self.io.tool_error(f"Error processing clipboard content: {e}")
 
+    def cmd_cmd(self, args):
+        "Manage commands (add/drop/list commands from files)"
+        words = args.strip().split()
+        if not words:
+            self.io.tool_error("Usage: /cmd [add|drop|list] [path|command]")
+            return
+
+        subcmd = words[0]
+        if subcmd == "add":
+            if len(words) != 2:
+                self.io.tool_error("Usage: /cmd add path/to/commands.yaml")
+                return
+            path = words[1]
+
+            try:
+                commands = CommandLoader.load_from([path])
+                self.user_commands.add_commands(path, commands)
+                names = sorted(commands.keys())
+                self.io.tool_output(f"Added commands: {', '.join(names)}")
+            except FileNotFoundError as e:
+                self.io.tool_error(str(e))
+            except ValueError as e:
+                self.io.tool_error(str(e))
+            except Exception as e:
+                self.io.tool_error(f"Unexpected error loading commands: {e}")
+
+        elif subcmd == "drop":
+            if len(words) != 2:
+                self.io.tool_error("Usage: /cmd drop [command-name|path/to/commands.yaml]")
+                return
+            target = words[1]
+            if not self.user_commands.drop_commands(target):
+                self.io.tool_error(f"No commands found for: {target}")
+            else:
+                self.io.tool_output(f"Removed commands for: {target}")
+
+        elif subcmd == "list":
+            if not self.user_commands:
+                self.io.tool_output("No commands registered")
+                return
+            self.user_commands.list_commands(self.io)
+        else:
+            self.io.tool_error(f"Unknown subcommand: {subcmd}")
+
     def cmd_read_only(self, args):
         "Add files to the chat that are for reference only, or turn added files to read-only"
         if not args.strip():
@@ -1296,6 +1356,7 @@ class Commands:
         announcements = "\n".join(self.coder.get_announcements())
         output = f"{announcements}\n{settings}"
         self.io.tool_output(output)
+
 
     def completions_raw_load(self, document, complete_event):
         return self.completions_raw_read_only(document, complete_event)
@@ -1454,6 +1515,85 @@ Just show me the edits I need to make.
             )
         except Exception as e:
             self.io.tool_error(f"An unexpected error occurred while copying to clipboard: {str(e)}")
+
+class UserCommandRegistry:
+    def __init__(self, commands=None, parent=None):
+        self.commands = commands or {}
+        self.sources: Dict[str, Set[str]] = {}
+        self.file_loader = CommandLoader.load_from
+
+        self.cmd_parent = parent
+
+    def __contains__(self, cmd_name):
+        return cmd_name in self.commands
+
+    def run(self, io, name, args=""):
+        cmd = self.commands.get(name)
+        try:
+            return cmd(self.cmd_parent, args)
+        except Exception as e:
+            io.tool_error(f"Error running command {name}: {e}")
+            return False
+
+    def cmd_names(self):
+        "Add a / prefix"
+        return [f"/{x}" for x in self.commands.keys()]
+
+    def load_from_config(self, config_paths):
+        commands = self.file_loader(config_paths)
+        if commands:
+            self.add_commands("<config>", commands)
+        return self
+
+    def add_commands(self, path, commands):
+        self.sources[path] = set(commands.keys())
+        self.commands.update(commands)
+
+    def drop_commands(self, target):
+        if target in self.sources:
+            for name in self.sources[target]:
+                self.commands.pop(name, None)
+            del self.sources[target]
+            return True
+        elif target in self.commands:
+            del self.commands[target]
+            for src, names in list(self.sources.items()):
+                if target in names:
+                    names.remove(target)
+                    if not names:
+                        del self.sources[src]
+            return True
+        return False
+
+    def list_commands(self, io):
+        """List all registered commands grouped by their source files."""
+        by_source = {}
+        for source, names in self.sources.items():
+            cmds = []
+            for name in names:
+                cmd = self.commands.get(name)
+                if cmd:
+                    cmds.append((name, cmd))
+            if cmds:
+                by_source[source] = cmds
+
+        if not by_source:
+            io.tool_output("No commands registered")
+            return
+
+        # Find the longest command name for proper padding
+        max_name_len = max(
+            (len(name) for cmds in by_source.values() for name, _ in cmds),
+            default=20
+        )
+        pad = max_name_len + 2  # Add some extra spacing
+
+        for source, cmds in sorted(by_source.items()):
+            source_display = source if source == "<config>" else Path(source).name
+            io.tool_output(f"\nCommands from {source_display}:")
+            for name, cmd in sorted(cmds):
+                desc = cmd.description or "No description"
+                io.tool_output(f"  {name:{pad}}: {desc}")
 
 
 def expand_subdir(file_path):

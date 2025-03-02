@@ -4,7 +4,17 @@ import re
 import shutil
 import sys
 import tempfile
+import pytest
+from typing import Generator, Tuple
 from io import StringIO
+from pathlib import Path
+
+from aider.commands import Commands
+from aider.io import InputOutput
+
+
+
+
 from pathlib import Path
 from unittest import TestCase, mock
 
@@ -1751,3 +1761,104 @@ class TestCommands(TestCase):
                     mock_tool_error.assert_any_call(
                         "Command '/model gpt-4' is only supported in interactive mode, skipping."
                     )
+
+@pytest.fixture
+def setup_commands(cmd_file_content: str) -> Generator[Tuple[Commands, InputOutput, Path], None, None]:
+    with GitTemporaryDirectory() as repo_dir:
+        io = InputOutput(pretty=False, fancy_input=False, yes=True)
+        coder = Coder.create(Model("gpt-3.5-turbo"), None, io)
+        commands = Commands(io, coder)
+
+        # Create a test commands file
+        cmd_file = Path(repo_dir) / "test_commands.yaml"
+        cmd_file.write_text(cmd_file_content)
+
+        yield commands, io, cmd_file
+
+@pytest.fixture
+def cmd_file_content() -> str:
+    return """
+commands:
+  test:
+    type: shell
+    definition: "echo test"
+    description: "Test command"
+  hello:
+    type: shell
+    definition: "echo 'Hello {args}'"
+    description: "Greeting command"
+"""
+
+def test_cmd_cmd_add(setup_commands):
+    commands, io, cmd_file = setup_commands
+
+    # Test adding commands
+    commands.cmd_cmd(f"add {cmd_file}")
+    assert "test" in commands.user_commands.commands
+    assert "hello" in commands.user_commands.commands
+
+def test_cmd_cmd_drop(setup_commands):
+    commands, io, cmd_file = setup_commands
+
+    # Add commands first
+    commands.cmd_cmd(f"add {cmd_file}")
+
+    # Test dropping single command
+    commands.cmd_cmd("drop test")
+    assert "test" not in commands.user_commands.commands
+    assert "hello" in commands.user_commands.commands
+
+    # Test dropping by file
+    commands.cmd_cmd(f"drop {cmd_file}")
+    assert "hello" not in commands.user_commands.commands
+
+def test_cmd_cmd_list(setup_commands):
+    commands, io, cmd_file = setup_commands
+
+    # Add commands first
+    commands.cmd_cmd(f"add {cmd_file}")
+
+    # Test listing commands
+    with mock.patch.object(io, "tool_output") as mock_output:
+        commands.cmd_cmd("list")
+        
+        # Verify header
+        mock_output.assert_any_call(f"\nCommands from {cmd_file.name}:")
+        
+        # Get all calls to tool_output
+        calls = [call[0][0] for call in mock_output.call_args_list]
+        
+        # Find command lines
+        cmd_lines = [line for line in calls if line.startswith("  ")]
+        
+        # Verify we have exactly 2 command lines
+        assert len(cmd_lines) == 2
+        
+        # Verify each command line has the expected format
+        for line in cmd_lines:
+            # Check basic format with command name and description
+            assert re.match(r"^\s{2}\w+\s+: .+$", line)
+            
+            # Verify specific commands are present
+            if "test" in line:
+                assert "Test command" in line
+            elif "hello" in line:
+                assert "Greeting command" in line
+
+def test_cmd_cmd_errors():
+    io = InputOutput(pretty=False, fancy_input=False, yes=True)
+    coder = Coder.create(Model("gpt-3.5-turbo"), None, io)
+    commands = Commands(io, coder)
+
+    with mock.patch.object(io, "tool_error") as mock_error:
+        # Test invalid subcommand
+        commands.cmd_cmd("invalid")
+        mock_error.assert_called_with("Unknown subcommand: invalid")
+
+        # Test missing file
+        commands.cmd_cmd("add nonexistent.yaml")
+        mock_error.assert_called_with(mock.ANY)  # Error message will vary by OS
+
+        # Test invalid command name
+        commands.cmd_cmd("drop nonexistent")
+        mock_error.assert_called_with("No commands found for: nonexistent")

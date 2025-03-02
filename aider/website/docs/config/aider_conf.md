@@ -36,6 +36,26 @@ Or lists can be specified using commas and square brackets:
 read: [CONVENTIONS.md, anotherfile.txt, thirdfile.py]
 ```
 
+## User Commands
+
+You can define custom commands in your `.aider.conf.yml` file under the `commands` section:
+
+```yaml
+commands:
+  test:
+    type: shell
+    definition: "echo {args}"
+    description: "Test command"
+  
+  format:
+    type: plugin
+    definition: "my_plugins.format:format_command" 
+    description: "Format code"
+
+  # Simple shell alias
+  status: "git status"
+```
+
 ## Sample YAML config file
 
 Below is a sample of the YAML config file, which you
@@ -77,7 +97,7 @@ cog.outl("```")
 ## Use claude-3-opus-20240229 model for the main chat
 #opus: false
 
-## Use claude-3-5-sonnet-20241022 model for the main chat
+## Use anthropic/claude-3-7-sonnet-20250219 model for the main chat
 #sonnet: false
 
 ## Use claude-3-5-haiku-20241022 model for the main chat

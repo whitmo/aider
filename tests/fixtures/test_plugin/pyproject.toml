@@ -1,0 +1,9 @@
+[project]
+name = "aider-test-plugin"
+version = "0.1.0"
+description = "Test plugin for aider command system"
+requires-python = ">=3.10"
+
+[project.entry-points."aider_test_plugin_commands"]
+test = "aider_test_plugin:test_command"
+override = "aider_test_plugin:test_override"
